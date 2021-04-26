@@ -10,6 +10,7 @@ import hyperface.cms.repository.LedgerEntryRepository
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Service
 
+
 @Service
 class PaymentService {
 
@@ -46,7 +47,7 @@ class PaymentService {
         debitEntry.ledgerEntryType = Constants.LedgerEntryType.Debit
         debitEntry.customerTxn = customerTxn
         debitEntry.description = customerTxn.description
-        debitEntry.closingBalance = account.currentBalance + customerTxn.amount
+        debitEntry.closingBalance = account.currentBalance - customerTxn.amount
         return debitEntry
     }
 
@@ -55,7 +56,7 @@ class PaymentService {
         creditEntry.account = account
         creditEntry.amount = customerTxn.amount
         creditEntry.openingBalance = account.currentBalance
-        creditEntry.closingBalance = account.currentBalance - customerTxn.amount
+        creditEntry.closingBalance = account.currentBalance + customerTxn.amount
         creditEntry.ledgerEntryType = Constants.LedgerEntryType.Credit
         creditEntry.description = customerTxn.description
         creditEntry.customerTxn = customerTxn
