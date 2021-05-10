@@ -4,6 +4,7 @@ import javax.persistence.Entity
 import javax.persistence.GeneratedValue
 import javax.persistence.GenerationType
 import javax.persistence.Id
+import javax.persistence.ManyToOne
 
 @Entity
 class CustomerTxn {
@@ -19,13 +20,25 @@ class CustomerTxn {
     TxnType txnType
     Channel channel
     String txnRefId
-    Double amount
+    Double transactionAmount
+    String transactionCurrency
+    Double billingAmount
+    String billingCurrency
     String tid
     String mid
     String mcc
     String description
+    String merchantName
+    String retrievalReferenceNumber
+    String systemTraceAuditNumber
 
-    // derived parameters
-    PaymentInstrument paymentInstrument
+    Double authorizedAmount
+
+    boolean postedToLedger // even if a single transaction is posted for this Authorization
+
+    Double availableBalanceAfterTxn
+
+    @ManyToOne
+    Card card
 
 }

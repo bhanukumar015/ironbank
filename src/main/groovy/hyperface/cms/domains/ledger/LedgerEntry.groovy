@@ -8,6 +8,7 @@ import javax.persistence.Entity
 import javax.persistence.GeneratedValue
 import javax.persistence.GenerationType
 import javax.persistence.Id
+import javax.persistence.ManyToOne
 
 @Entity
 class LedgerEntry {
@@ -15,10 +16,15 @@ class LedgerEntry {
     @GeneratedValue(strategy = GenerationType.AUTO)
     Long id
 
+    @ManyToOne
     CustomerTxn customerTxn
+
     Double openingBalance
     Double closingBalance
+
+    @ManyToOne
     CreditAccount account
+
     Double amount
     Constants.LedgerEntryType ledgerEntryType
     Date createdOn

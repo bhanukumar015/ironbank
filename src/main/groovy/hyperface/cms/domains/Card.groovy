@@ -13,7 +13,12 @@ class Card implements PaymentInstrument {
     @GeneratedValue(strategy = GenerationType.AUTO)
     Long id
 
+    @ManyToOne
+    @JoinColumn(name="card_bin_id")
     CardBin cardBin
+
+    String lastFourDigits
+
     int cardExpiryMonth
     int cardExpiryYear
 
@@ -28,12 +33,17 @@ class Card implements PaymentInstrument {
     Boolean enableDomesticTransactions = false
     Boolean enableNFC = false
     Boolean enableOnlineTransactions = false
-    Boolean enableCashWithdrawl = false
+    Boolean enableCashWithdrawal = false
 
-    Double dailyCashWithdrawlLimit
+    Double dailyCashWithdrawalLimit
     Double dailyTransactionLimit
+
+    Boolean hotlisted = false
 
     @ManyToOne
     @JoinColumn(name="credit_account_id")
     CreditAccount creditAccount
+
+    @ManyToOne
+    CardProgram cardProgram
 }
