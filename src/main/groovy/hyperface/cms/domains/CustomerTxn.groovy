@@ -33,6 +33,7 @@ class CustomerTxn {
     String systemTraceAuditNumber
 
     Double authorizedAmount
+    Double capturedAmount
 
     boolean postedToLedger // even if a single transaction is posted for this Authorization
 

@@ -2,10 +2,12 @@ package hyperface.cms.service
 
 import hyperface.cms.Constants
 import hyperface.cms.commands.AuthorizationRequest
+import hyperface.cms.commands.SettlementDebitRequest
 import hyperface.cms.domains.Card
 import hyperface.cms.domains.CreditAccount
 import hyperface.cms.domains.CustomerTxn
 import hyperface.cms.domains.ledger.LedgerEntry
+import hyperface.cms.repository.CardRepository
 import hyperface.cms.repository.CreditAccountRepository
 import hyperface.cms.repository.CustomerTxnRepository
 import hyperface.cms.repository.LedgerEntryRepository
@@ -21,6 +23,9 @@ class PaymentService {
 
     @Autowired
     private CreditAccountRepository creditAccountRepository
+
+    @Autowired
+    CardRepository cardRepository
 
     @Autowired
     private CustomerTxnRepository customerTxnRepository
@@ -59,11 +64,34 @@ class PaymentService {
         return txn
     }
 
+    // TODO - how to make sure that this is processed only once?
+    public void processSettlementDebit(SettlementDebitRequest req) {
+        Card card = cardRepository.findById(req.cardId).get()
+        CreditAccount creditAccount = card.creditAccount
+        CustomerTxn txn = customerTxnRepository.findByCardAndRRN(card, req.retrievalReferenceNumber)
+        // an approximate defense
+        if(txn.capturedAmount + req.settlementAmount > 1.2 * txn.authorizedAmount) {
+            throw new IllegalArgumentException("This entry looks to have been processed already")
+        }
+        txn.postedToLedger = true
+        LedgerEntry ledgerEntry = createDebitEntry(creditAccount, txn, req.settlementAmount)
+        if(txn.capturedAmount < txn.authorizedAmount && (txn.capturedAmount + req.settlementAmount) > txn.authorizedAmount) {
+            creditAccount.availableCreditLimit -= ((txn.capturedAmount + req.settlementAmount) - txn.authorizedAmount)
+        }
+        else if(txn.capturedAmount >= txn.authorizedAmount) {
+            creditAccount.availableCreditLimit -= req.settlementAmount
+        }
+        txn.capturedAmount += req.settlementAmount
+        ledgerEntryRepository.save(ledgerEntry)
+        creditAccountRepository.save(creditAccount)
+        customerTxnRepository.save(txn)
+    }
+
     public void processAuthCapture(CustomerTxn customerTxn) {
         Card card = (Card) customerTxn.card
         CreditAccount creditAccount = card.getCreditAccount()
         LedgerEntry debitEntry = createDebitEntry(creditAccount, customerTxn)
-        creditAccount.availableCreditLimit -= customerTxn.amount
+        creditAccount.availableCreditLimit -= customerTxn.billingAmount
         ledgerEntryRepository.save(debitEntry)
         creditAccountRepository.save(creditAccount)
         return
@@ -80,13 +108,27 @@ class PaymentService {
     public LedgerEntry createDebitEntry(CreditAccount account, CustomerTxn customerTxn) {
         LedgerEntry debitEntry = new LedgerEntry()
         debitEntry.account = account
-        debitEntry.amount = customerTxn.amount
+        debitEntry.amount = customerTxn.billingAmount
         debitEntry.createdOn = new Date()
         debitEntry.openingBalance = account.currentBalance
         debitEntry.ledgerEntryType = Constants.LedgerEntryType.Debit
         debitEntry.customerTxn = customerTxn
         debitEntry.description = customerTxn.description
-        debitEntry.closingBalance = account.currentBalance - customerTxn.amount
+        debitEntry.closingBalance = account.currentBalance - customerTxn.billingAmount
+        return debitEntry
+    }
+
+    public LedgerEntry createDebitEntry(CreditAccount account, CustomerTxn customerTxn, Double settlementAmount) {
+        LedgerEntry debitEntry = new LedgerEntry()
+        debitEntry.account = account
+        debitEntry.amount = settlementAmount
+        debitEntry.createdOn = new Date()
+        debitEntry.openingBalance = account.currentBalance
+        debitEntry.ledgerEntryType = Constants.LedgerEntryType.Debit
+        debitEntry.customerTxn = customerTxn
+        debitEntry.merchantName = customerTxn.merchantName
+        debitEntry.description = customerTxn.description
+        debitEntry.closingBalance = account.currentBalance - settlementAmount
         return debitEntry
     }
 

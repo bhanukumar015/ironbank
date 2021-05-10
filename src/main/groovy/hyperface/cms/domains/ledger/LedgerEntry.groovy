@@ -28,7 +28,10 @@ class LedgerEntry {
     Double amount
     Constants.LedgerEntryType ledgerEntryType
     Date createdOn
+    String merchantName
     String description
     String reasonCode
     String note
+
+    String schemeFileComments
 }
