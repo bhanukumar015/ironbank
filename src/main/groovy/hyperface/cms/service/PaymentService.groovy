@@ -2,7 +2,7 @@ package hyperface.cms.service
 
 import hyperface.cms.Constants
 import hyperface.cms.commands.AuthorizationRequest
-import hyperface.cms.commands.SettlementDebitRequest
+import hyperface.cms.commands.SettlementRequest
 import hyperface.cms.domains.Card
 import hyperface.cms.domains.CreditAccount
 import hyperface.cms.domains.CustomerTxn
@@ -32,6 +32,8 @@ class PaymentService {
 
     private CustomerTxn createCustomerTxn(AuthorizationRequest req) {
         CustomerTxn txn = new CustomerTxn()
+        txn.cardSwitch = req.cardSwitch
+        txn.switchTransactionId = req.transactionId
         txn.card = req.card
         txn.mid = req.merchantTerminalId
         txn.tid = req.merchantTerminalId
@@ -41,13 +43,15 @@ class PaymentService {
         txn.systemTraceAuditNumber = req.systemTraceAuditNumber
         txn.txnRefId = req.transactionId
         txn.channel = CustomerTxn.Channel.Chip_And_Pin
-        txn.txnType = CustomerTxn.TxnType.Authorize
+        txn.txnType = req.getTxnType()
         txn.transactionCurrency = req.transactionCurrency
         txn.transactionAmount = req.transactionAmount
         txn.billingAmount = req.billingAmount
         txn.billingCurrency = req.billingCurrency
         txn.mcc = req.merchantCategoryCode
-        txn.authorizedAmount = req.billingAmount
+        if(txn.txnType == CustomerTxn.TxnType.Authorize) {
+            txn.authorizedAmount = req.billingAmount
+        }
         txn.postedToLedger = false
         return txn
     }
@@ -64,11 +68,23 @@ class PaymentService {
         return txn
     }
 
+    // think about merging this with processAuthorization
+    public CustomerTxn processReversalRequest(AuthorizationRequest req) {
+        CustomerTxn txn = createCustomerTxn(req)
+        req.card.creditAccount.availableCreditLimit += txn.billingAmount
+        txn.availableBalanceAfterTxn = req.card.creditAccount.availableCreditLimit
+        customerTxnRepository.save(txn)
+        creditAccountRepository.save(req.card.creditAccount)
+        return txn
+    }
+
     // TODO - how to make sure that this is processed only once?
-    public void processSettlementDebit(SettlementDebitRequest req) {
+    public void processSettlementDebit(SettlementRequest req) {
         Card card = cardRepository.findById(req.cardId).get()
+        assert card != null
         CreditAccount creditAccount = card.creditAccount
-        CustomerTxn txn = customerTxnRepository.findByCardAndRRN(card, req.retrievalReferenceNumber)
+
+        CustomerTxn txn = customerTxnRepository.findAuthTxnByCardAndRRN(card, req.retrievalReferenceNumber)
         // an approximate defense
         if(txn.capturedAmount + req.settlementAmount > 1.2 * txn.authorizedAmount) {
             throw new IllegalArgumentException("This entry looks to have been processed already")
@@ -81,7 +97,20 @@ class PaymentService {
         else if(txn.capturedAmount >= txn.authorizedAmount) {
             creditAccount.availableCreditLimit -= req.settlementAmount
         }
+        creditAccount.currentBalance -= ledgerEntry.amount
         txn.capturedAmount += req.settlementAmount
+        ledgerEntryRepository.save(ledgerEntry)
+        creditAccountRepository.save(creditAccount)
+        customerTxnRepository.save(txn)
+    }
+
+    public void processSettlementCredit(SettlementRequest req) {
+        Card card = cardRepository.findById(req.cardId).get()
+        assert card != null
+        CreditAccount creditAccount = card.creditAccount
+        CustomerTxn txn = customerTxnRepository.findAuthTxnByCardAndRRN(card, req.retrievalReferenceNumber)
+        LedgerEntry ledgerEntry = createCreditEntry(creditAccount, txn, req.settlementAmount)
+        creditAccount.currentBalance += ledgerEntry.amount
         ledgerEntryRepository.save(ledgerEntry)
         creditAccountRepository.save(creditAccount)
         customerTxnRepository.save(txn)
@@ -130,6 +159,21 @@ class PaymentService {
         debitEntry.description = customerTxn.description
         debitEntry.closingBalance = account.currentBalance - settlementAmount
         return debitEntry
+    }
+
+    public LedgerEntry createCreditEntry(CreditAccount account, CustomerTxn customerTxn, Double settlementAmount) {
+        LedgerEntry creditEntry = new LedgerEntry()
+        creditEntry.account = account
+        creditEntry.amount = settlementAmount
+        creditEntry.openingBalance = account.currentBalance
+        creditEntry.closingBalance = account.currentBalance + settlementAmount
+        creditEntry.ledgerEntryType = Constants.LedgerEntryType.Credit
+        creditEntry.description = customerTxn.description
+        creditEntry.customerTxn = customerTxn
+        creditEntry.merchantName = customerTxn.merchantName
+        creditEntry.description = customerTxn.description
+        creditEntry.createdOn = new Date()
+        return creditEntry
     }
 
     public LedgerEntry createCreditEntry(CreditAccount account, CustomerTxn customerTxn) {

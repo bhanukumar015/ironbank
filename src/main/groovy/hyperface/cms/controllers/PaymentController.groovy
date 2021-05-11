@@ -19,7 +19,6 @@ import hyperface.cms.service.AuthorizationManager
 import hyperface.cms.service.PaymentService
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.MediaType
-import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestMethod
 import org.springframework.web.bind.annotation.ResponseBody
@@ -58,7 +57,29 @@ public class PaymentController {
         println req.dump()
         Card card = cardRepository.findById(req.cardId).get()
         req.card = card
-        Optional<RejectTxnResponse> rejectResp = authorizationManager.shouldRejectTxn(req)
+        if(req.transactionType == AuthorizationRequest.TransactionType.DEBIT) {
+            return performAuthDebit(req)
+        }
+        else if(req.transactionType == AuthorizationRequest.TransactionType.REVERSAL) {
+            return performAuthReversal(req)
+        }
+        return [responseCode: "01", 'partnerReferenceNumber': System.currentTimeMillis().toString()]
+    }
+
+    private Map<String, String> performAuthReversal(AuthorizationRequest req) {
+        Optional<RejectTxnResponse> rejectResp = authorizationManager.shouldRejectReversalTxn(req)
+        if(rejectResp.isPresent()) {
+            RejectTxnResponse rtr = rejectResp.get()
+            return [responseCode: rtr.rejectionCode, partnerReferenceNumber: System.currentTimeMillis().toString()]
+        }
+        else {
+            CustomerTxn txn = paymentService.processReversalRequest(req)
+            return ["responseCode": "00", "partnerReferenceNumber": txn.id.toString()]
+        }
+    }
+
+    private Map<String, String> performAuthDebit(AuthorizationRequest req) {
+        Optional<RejectTxnResponse> rejectResp = authorizationManager.shouldRejectAuthDebitTxn(req)
         if(rejectResp.isPresent()) {
             RejectTxnResponse rtr = rejectResp.get()
             return [responseCode: rtr.rejectionCode, partnerReferenceNumber: System.currentTimeMillis().toString()]

@@ -1,6 +1,6 @@
 package hyperface.cms.controllers
 
-import hyperface.cms.commands.SettlementDebitRequest
+import hyperface.cms.commands.SettlementRequest
 import hyperface.cms.domains.*
 import hyperface.cms.repository.CardProgramRepository
 import hyperface.cms.repository.CardRepository
@@ -45,12 +45,25 @@ public class SettlementController {
                     consumes = MediaType.APPLICATION_FORM_URLENCODED_VALUE,
                     produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
-    public Map<String, String> settlementDebit(SettlementDebitRequest req) {
+    public Map<String, String> settlementDebit(SettlementRequest req) {
         println req.dump()
         Card card = cardRepository.findById(req.cardId).get()
         req.card = card
         paymentService.processSettlementDebit(req)
         return ["responseCode": "00"]
     }
+
+    @RequestMapping(value = "/settlement-credit", method = RequestMethod.POST,
+            consumes = MediaType.APPLICATION_FORM_URLENCODED_VALUE,
+            produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public Map<String, String> settlementCredit(SettlementRequest req) {
+        println req.dump()
+        Card card = cardRepository.findById(req.cardId).get()
+        req.card = card
+        paymentService.processSettlementCredit(req)
+        return ["responseCode": "00"]
+    }
+
 
 }

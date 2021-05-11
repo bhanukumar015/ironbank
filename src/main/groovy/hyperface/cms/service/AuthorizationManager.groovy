@@ -26,7 +26,7 @@ class AuthorizationManager {
     @Autowired
     private CustomerTxnRepository customerTxnRepository
 
-    private Optional<RejectTxnResponse> shouldRejectTxn(AuthorizationRequest req) {
+    public Optional<RejectTxnResponse> shouldRejectAuthDebitTxn(AuthorizationRequest req) {
         Card card = req.card
         Optional<RejectTxnResponse> rejectTxnResponse = new Optional<RejectTxnResponse>()
         def setRejectReason = { Constants.RejectionCode rc->
@@ -39,6 +39,19 @@ class AuthorizationManager {
             setRejectReason(Constants.RejectionCode.INSUFFICIENT_FUNDS)
         }
         if (card.hotlisted == true) {
+            setRejectReason(Constants.RejectionCode.CARD_HOTLISTED)
+        }
+        return rejectTxnResponse
+    }
+
+    public Optional<RejectTxnResponse> shouldRejectReversalTxn(AuthorizationRequest req) {
+        Card card = req.card
+        Optional<RejectTxnResponse> rejectTxnResponse = new Optional<RejectTxnResponse>()
+        def setRejectReason = { Constants.RejectionCode rc->
+            rejectTxnResponse = new Optional<RejectTxnResponse>(new RejectTxnResponse(rc))
+        }
+        // TODO - ensure that the amount requested for reversal is within bounds of the actual transaction
+        if(card.hotlisted == true) {
             setRejectReason(Constants.RejectionCode.CARD_HOTLISTED)
         }
         return rejectTxnResponse

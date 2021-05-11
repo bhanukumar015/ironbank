@@ -5,6 +5,8 @@ import hyperface.cms.domains.CreditAccount
 import hyperface.cms.domains.CustomerTxn
 
 import javax.persistence.Entity
+import javax.persistence.EnumType
+import javax.persistence.Enumerated
 import javax.persistence.GeneratedValue
 import javax.persistence.GenerationType
 import javax.persistence.Id
@@ -26,6 +28,7 @@ class LedgerEntry {
     CreditAccount account
 
     Double amount
+    @Enumerated(EnumType.STRING)
     Constants.LedgerEntryType ledgerEntryType
     Date createdOn
     String merchantName
