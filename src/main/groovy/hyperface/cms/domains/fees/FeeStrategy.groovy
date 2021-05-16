@@ -1,4 +1,5 @@
-package hyperface.cms.domains
+package hyperface.cms.domains.fees
+
 
 import javax.persistence.Entity
 import javax.persistence.GeneratedValue
@@ -9,10 +10,12 @@ import javax.persistence.InheritanceType
 
 @Entity
 @Inheritance(strategy = InheritanceType.JOINED)
-class Account {
+class FeeStrategy  {
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
-    Long id
+    Long id;
 
-    Double currentBalance
+    public Double getFee(Double inputValue) {
+        return 0
+    }
 }
