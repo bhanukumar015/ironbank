@@ -7,6 +7,9 @@ import javax.persistence.GeneratedValue
 import javax.persistence.GenerationType
 import javax.persistence.Id
 
+// https://www.bankbazaar.com/credit-card/rbl-bank-edition-credit-card.html
+// See late fee
+// 15% of Total amount due (Min Rs.50, Max Rs.1,250)
 @Entity
 class PctWithMinAndMaxStrategy extends FeeStrategy {
 

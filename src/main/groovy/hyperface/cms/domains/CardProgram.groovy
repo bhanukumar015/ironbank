@@ -2,6 +2,8 @@ package hyperface.cms.domains
 
 import hyperface.cms.Constants
 import hyperface.cms.domains.fees.FeeStrategy
+import hyperface.cms.domains.fees.PctWithMinAndMaxStrategy
+import hyperface.cms.domains.fees.PercentFeeStrategy
 
 import javax.persistence.Entity
 import javax.persistence.GeneratedValue
@@ -20,8 +22,8 @@ class CardProgram extends HyperfaceProgram {
     Constants.Currency baseCurrency
 
     Integer annualizedPercentageRate
-    Integer joiningFees
-    Integer annualFees // applicable from second year onwards
+    Double joiningFees
+    Double annualFees // applicable from second year onwards
 
     // program defaults
     Integer defaultDailyTransactionLimit
@@ -33,7 +35,24 @@ class CardProgram extends HyperfaceProgram {
     @OneToOne
     FeeStrategy cashAdvanceStrategy
 
+    @OneToOne
+    FeeStrategy forexFeeStrategy
+
+    @OneToOne
+    FeeStrategy joiningFeeStrategy
+
+
+//    @ManyToOne
+//    CreditCardScheduleOfCharges scheduleOfCharges
+
     @ManyToOne
     CardBin cardBin
+
+    static CardProgram exampleCardProgram() {
+        CardProgram cp = new CardProgram()
+        cp.lateFeeStrategy = new PctWithMinAndMaxStrategy(minFee: 50.00, maxFee: 1250, percentOfOutstanding: 15)
+        cp.forexFeeStrategy = new PercentFeeStrategy(percentageToBeCharged: 1.2)
+        return cp
+    }
 
 }
