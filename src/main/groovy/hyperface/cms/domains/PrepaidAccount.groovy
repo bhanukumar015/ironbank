@@ -1,12 +1,15 @@
 package hyperface.cms.domains
 
+import org.hibernate.annotations.GenericGenerator
+
 import javax.persistence.*
 
 @Entity
 class PrepaidAccount extends Account {
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
-    Long id
+    @GenericGenerator(name = "prepaid_account_id", strategy = "hyperface.cms.util.UniqueIdGenerator")
+    @GeneratedValue(generator = "prepaid_account_id")
+    String id
 
     Double currentBalance
 

@@ -1,6 +1,9 @@
 package hyperface.cms.domains
 
 import hyperface.cms.Constants
+import org.hibernate.annotations.CreationTimestamp
+import org.hibernate.annotations.GenericGenerator
+import org.hibernate.annotations.UpdateTimestamp
 
 import javax.persistence.Entity
 import javax.persistence.EnumType
@@ -13,8 +16,9 @@ import javax.persistence.ManyToOne
 @Entity
 class CustomerTxn {
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
-    Long id
+    @GenericGenerator(name = "customer_txn_id", strategy = "hyperface.cms.util.UniqueIdGenerator")
+    @GeneratedValue(generator = "customer_txn_id")
+    String id
 
     enum TxnType {
         Authorize, Refund
@@ -56,5 +60,11 @@ class CustomerTxn {
 
     @ManyToOne
     Card card
+
+    @CreationTimestamp
+    Date createdOn
+
+    @UpdateTimestamp
+    Date updatedOn
 
 }

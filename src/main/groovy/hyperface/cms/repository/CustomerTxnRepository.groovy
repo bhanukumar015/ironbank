@@ -12,4 +12,6 @@ interface CustomerTxnRepository extends CrudRepository<CustomerTxn, Long> {
 
     @Query("select ct from CustomerTxn ct where ct.card = ?1 and retrievalReferenceNumber = ?2 and txnType = 'Authorize'")
     CustomerTxn findAuthTxnByCardAndRRN(Card card, String rrn)
+
+    List<CustomerTxn> findByCard(Card card)
 }

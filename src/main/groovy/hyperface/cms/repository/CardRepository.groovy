@@ -8,7 +8,7 @@ import org.springframework.data.repository.CrudRepository
 import org.springframework.stereotype.Repository
 
 @Repository
-interface CardRepository extends CrudRepository<Card, Long> {
+interface CardRepository extends CrudRepository<Card, String> {
     List<Card> findByCreditAccount(CreditAccount creditAccount)
     List<Card> findByCreditAccountAndCardProgram(CreditAccount creditAccount, CardProgram cardProgram)
 }

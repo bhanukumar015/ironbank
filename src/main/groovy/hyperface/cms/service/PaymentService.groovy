@@ -63,8 +63,8 @@ class PaymentService {
         req.card.creditAccount.availableCreditLimit -= txn.billingAmount
         txn.availableBalanceAfterTxn = req.card.creditAccount.availableCreditLimit
         customerTxnRepository.save(txn)
+        println txn.dump()
         creditAccountRepository.save(req.card.creditAccount)
-
         return txn
     }
 

@@ -26,7 +26,7 @@ class SettlementRequest {
         }
         private String status
     }
-    Long cardId
+    String cardId
     String retrievalReferenceNumber
     String systemTraceAuditNumber
 

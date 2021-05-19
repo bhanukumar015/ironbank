@@ -1,6 +1,6 @@
 package hyperface.cms.commands
 
 class CreateCreditAccountRequest {
-    Long customerId
+    String customerId
     Integer approvedCreditLimit
 }

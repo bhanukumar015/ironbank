@@ -1,6 +1,7 @@
 package hyperface.cms.domains
 
 import hyperface.cms.Constants
+import org.hibernate.annotations.GenericGenerator
 
 import javax.persistence.Entity
 import javax.persistence.GeneratedValue
@@ -14,8 +15,10 @@ import javax.persistence.ManyToOne
 @Entity
 class CreditAccount extends Account {
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
-    Long id
+    @GenericGenerator(name = "credit_account_id", strategy = "hyperface.cms.util.UniqueIdGenerator")
+    @GeneratedValue(generator = "credit_account_id")
+    String id
+
 
     Constants.Currency defaultCurrency
     Double approvedCreditLimit

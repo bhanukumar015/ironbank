@@ -18,7 +18,7 @@ class AuthorizationRequest {
         private String value
     }
 
-    Long cardId
+    String cardId
 
     Constants.CardSwitch cardSwitch = Constants.CardSwitch.Nium
 

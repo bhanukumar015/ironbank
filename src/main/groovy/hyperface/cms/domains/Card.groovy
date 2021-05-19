@@ -1,5 +1,8 @@
 package hyperface.cms.domains
 
+import org.hibernate.annotations.GenericGenerator
+
+import javax.persistence.Column
 import javax.persistence.Entity
 import javax.persistence.GeneratedValue
 import javax.persistence.GenerationType
@@ -9,9 +12,11 @@ import javax.persistence.ManyToOne
 
 @Entity
 class Card implements PaymentInstrument {
+
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
-    Long id
+    @GenericGenerator(name = "card_id", strategy = "hyperface.cms.util.UniqueIdGenerator")
+    @GeneratedValue(generator = "card_id")
+    String id
 
     @ManyToOne
     @JoinColumn(name="card_bin_id")
