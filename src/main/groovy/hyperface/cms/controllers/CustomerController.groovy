@@ -98,7 +98,7 @@ public class CustomerController {
         Date to = req.to?:(new Date())
         Card card = cardRepository.findById(req.cardId).get()
         CreditAccount creditAccount = card.creditAccount
-        List<CustomerTxn> customerTxns = customerTxnRepository.findByCard(card)
+        List<CustomerTxn> customerTxns = customerTxnRepository.findAllByAccountInRange(card.creditAccount, from, to)
         println customerTxns
         List<LedgerEntry> ledgerEntries = ledgerEntryRepository.findAllByCreditAccountInRange(creditAccount, from, to)
         println ledgerEntries

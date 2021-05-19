@@ -35,6 +35,7 @@ class PaymentService {
         txn.cardSwitch = req.cardSwitch
         txn.switchTransactionId = req.transactionId
         txn.card = req.card
+        txn.account = req.card.creditAccount
         txn.mid = req.merchantTerminalId
         txn.tid = req.merchantTerminalId
         txn.merchantName = req.merchantNameLocation

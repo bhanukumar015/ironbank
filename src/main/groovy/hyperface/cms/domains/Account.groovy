@@ -8,6 +8,7 @@ import javax.persistence.GenerationType
 import javax.persistence.Id
 import javax.persistence.Inheritance
 import javax.persistence.InheritanceType
+import javax.persistence.ManyToOne
 
 @Entity
 @Inheritance(strategy = InheritanceType.JOINED)
@@ -18,4 +19,7 @@ class Account {
     String id
 
     Double currentBalance
+
+    @ManyToOne
+    Bank bank
 }

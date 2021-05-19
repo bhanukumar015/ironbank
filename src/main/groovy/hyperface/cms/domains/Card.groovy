@@ -51,4 +51,10 @@ class Card implements PaymentInstrument {
 
     @ManyToOne
     CardProgram cardProgram
+
+    @ManyToOne
+    Client client
+
+    @ManyToOne
+    Bank bank
 }

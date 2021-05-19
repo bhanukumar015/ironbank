@@ -19,7 +19,6 @@ class CreditAccount extends Account {
     @GeneratedValue(generator = "credit_account_id")
     String id
 
-
     Constants.Currency defaultCurrency
     Double approvedCreditLimit
     Double availableCreditLimit
@@ -27,8 +26,5 @@ class CreditAccount extends Account {
     @ManyToOne
     @JoinColumn(name="customer_id")
     Customer customer
-
-    @ManyToOne
-    CardProgram cardProgram
 
 }

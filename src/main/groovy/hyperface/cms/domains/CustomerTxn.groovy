@@ -61,6 +61,9 @@ class CustomerTxn {
     @ManyToOne
     Card card
 
+    @ManyToOne
+    Account account
+
     @CreationTimestamp
     Date createdOn
 

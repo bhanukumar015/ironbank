@@ -1,5 +1,6 @@
 package hyperface.cms.repository
 
+import hyperface.cms.domains.Account
 import hyperface.cms.domains.Card
 import hyperface.cms.domains.CustomerTxn
 import org.springframework.data.jpa.repository.Query
@@ -14,4 +15,7 @@ interface CustomerTxnRepository extends CrudRepository<CustomerTxn, Long> {
     CustomerTxn findAuthTxnByCardAndRRN(Card card, String rrn)
 
     List<CustomerTxn> findByCard(Card card)
+
+    @Query("select ct from CustomerTxn ct where ct.account = ?1 and createdOn >= ?2 and createdOn < ?3")
+    List<CustomerTxn> findAllByAccountInRange(Account account, Date from, Date to)
 }

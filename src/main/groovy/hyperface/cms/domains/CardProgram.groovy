@@ -61,4 +61,10 @@ class CardProgram extends HyperfaceProgram {
         return cp
     }
 
+    @ManyToOne
+    Bank bank
+
+    @ManyToOne
+    Client client
+
 }
