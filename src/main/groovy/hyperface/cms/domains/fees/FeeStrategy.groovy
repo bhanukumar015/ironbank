@@ -1,21 +1,24 @@
 package hyperface.cms.domains.fees
 
+import com.fasterxml.jackson.annotation.JsonIgnore
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties
+import com.fasterxml.jackson.annotation.JsonSubTypes
+import com.fasterxml.jackson.annotation.JsonTypeInfo
+import hyperface.cms.Constants
 
-import javax.persistence.Entity
-import javax.persistence.GeneratedValue
-import javax.persistence.GenerationType
-import javax.persistence.Id
-import javax.persistence.Inheritance
-import javax.persistence.InheritanceType
+@JsonTypeInfo(use = JsonTypeInfo.Id.NAME)
+@JsonIgnoreProperties(ignoreUnknown = true)
+@JsonSubTypes([
+        @JsonSubTypes.Type(value = FlatFeeStrategy.class, name = "flat"),
+        @JsonSubTypes.Type(value = PercentFeeStrategy.class, name = "percent"),
+        @JsonSubTypes.Type(value = HigherOfPctOrMinValueStrategy.class, name = "higherOfPctOrX"),
+        @JsonSubTypes.Type(value = PctWithMinAndMaxStrategy.class, name = "pctWithMinMax"),
+        @JsonSubTypes.Type(value = SlabWiseStrategy.class, name = "slabWise")
+])
+abstract class FeeStrategy  {
+    @JsonIgnore
+    Constants.FeeStrategyType type
 
-@Entity
-@Inheritance(strategy = InheritanceType.JOINED)
-class FeeStrategy  {
-    @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
-    Long id;
-
-    public Double getFee(Double inputValue) {
-        return 0
-    }
+    abstract public Double getFee(Double inputValue);
+    abstract public Constants.FeeStrategyType getStrategyType();
 }

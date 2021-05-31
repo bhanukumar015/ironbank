@@ -32,4 +32,14 @@ class Constants {
         String description
     }
 
+    enum FeeStrategyType {
+        FLAT,
+        PERCENTAGE,
+        PERCENT_WITH_MIN_MAX,
+        SLAB_FLAT,
+        HIGHER_OF_PCT_OR_X,
+        LOWER_OF_PCT_OR_X
+    }
+
+
 }

@@ -1,0 +1,23 @@
+<!DOCTYPE HTML>
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/thymeleaf-extras-springsecurity3"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout">
+<head>
+    <title>Hyperface</title>
+    <div th:insert="~{fragments/header :: header}"></div>
+    <!--    <th:block layout:include="header"/>-->
+</head>
+<body>
+<div th:replace="~{fragments/topnav :: topnav}"></div>
+<div id="container-fluid">
+    <div class="row">
+        <div th:replace="~{fragments/sidenav :: sidenav}"></div>
+        <main role="main" class="col-md-9 ml-sm-auto col-lg-10 px-4" layout:fragment="content">
+            <h1>Static content for prototyping purposes only</h1>
+        </main>
+    </div>
+
+</div>
+</body>
+</html>

@@ -11,11 +11,11 @@ import javax.persistence.ManyToOne
 
 @Entity
 class CardBin {
-    @Id
-    @GenericGenerator(name = "card_bin_id", strategy = "hyperface.cms.util.UniqueIdGenerator")
-    @GeneratedValue(generator = "card_bin_id")
-    String id
+//    @GenericGenerator(name = "card_bin_id", strategy = "hyperface.cms.util.UniqueIdGenerator")
+//    @GeneratedValue(generator = "card_bin_id")
+//    String id
 
+    @Id
     String bin
     Constants.CardScheme cardScheme
     String category //enum?

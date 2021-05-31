@@ -1,11 +1,39 @@
 package hyperface.cms.controllers
 
-import org.springframework.web.bind.annotation.RequestMapping
-import org.springframework.web.bind.annotation.RestController
+import hyperface.cms.domains.CardProgram
+import hyperface.cms.repository.CardProgramRepository
+import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.stereotype.Controller
+import org.springframework.ui.Model
+import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.ModelAttribute
+import org.springframework.web.bind.annotation.PostMapping
 
-@RestController
+@Controller
 class BankController {
-    public void createCardProgram() {
 
+    @Autowired
+    CardProgramRepository cardProgramRepository
+
+    @GetMapping("/cardPrograms")
+    public String listCardPrograms(Model model) {
+        List<CardProgram> cardPrograms = cardProgramRepository.findAll()
+        cardPrograms.each {
+            println it.dump()
+        }
+        model.addAttribute("cardPrograms", cardPrograms)
+        return "cardPrograms"
+    }
+
+    @GetMapping("/cardProgram")
+    public String createCardProgram(Model model) {
+        model.addAttribute("cardProgram", new CardProgram())
+        return "cardProgram"
+    }
+
+    @PostMapping("/cardProgram")
+    public String submitCardProgram(@ModelAttribute CardProgram cardProgram, Model model) {
+        model.addAttribute("cardProgram", cardProgram)
+        return "result"
     }
 }

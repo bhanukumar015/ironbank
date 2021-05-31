@@ -1,0 +1,24 @@
+<!DOCTYPE HTML>
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/thymeleaf-extras-springsecurity3"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout">
+<head>
+    <title>Hyperface</title>
+    <div th:insert="~{fragments/header :: header}"></div>
+<!--    <th:block layout:include="header"/>-->
+</head>
+<body>
+<div id="root">
+    <div th:insert="~{fragments/sidenav :: sidenav}"></div>
+    <div class="relative md:ml-64 bg-blueGray-50">
+        <h1>Form</h1>
+        <form action="#" th:action="@{/cardProgram}" th:object="${cardProgram}" method="post">
+            <p>Id:  <input type="text" th:field="*{name}" id="id" placeholder="ID"></p>
+            <p>Message: <input type="text" name="name" th:field="*{name}" /></p>
+            <p><input type="submit" value="Submit" /> <input type="reset" value="Reset" /></p>
+        </form>
+    </div>
+</div>
+</body>
+</html>

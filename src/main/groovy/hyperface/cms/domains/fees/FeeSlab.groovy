@@ -1,16 +1,9 @@
 package hyperface.cms.domains.fees
 
-import javax.persistence.Entity
-import javax.persistence.GeneratedValue
-import javax.persistence.GenerationType
-import javax.persistence.Id
+import com.fasterxml.jackson.annotation.JsonTypeInfo
 
-@Entity
+@JsonTypeInfo(use = JsonTypeInfo.Id.NAME)
 class FeeSlab {
-    @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
-    Long id
-
     Double minValue
     Double maxValue
     Double feeAmount

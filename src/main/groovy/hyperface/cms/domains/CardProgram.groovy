@@ -24,42 +24,20 @@ class CardProgram extends HyperfaceProgram {
 
     String name
 
+    Boolean isActive = false
+
     @Enumerated(value = EnumType.STRING)
     Constants.Currency baseCurrency
-
-    Integer annualizedPercentageRate
-    Double joiningFees
-    Double annualFees // applicable from second year onwards
 
     // program defaults
     Integer defaultDailyTransactionLimit
     Integer defaultDailyCashWithdrawalLimit
 
-    @OneToOne
-    FeeStrategy lateFeeStrategy
-
-    @OneToOne
-    FeeStrategy cashAdvanceStrategy
-
-    @OneToOne
-    FeeStrategy forexFeeStrategy
-
-    @OneToOne
-    FeeStrategy joiningFeeStrategy
-
-
-//    @ManyToOne
-//    CreditCardScheduleOfCharges scheduleOfCharges
+    @ManyToOne
+    CreditCardScheduleOfCharges scheduleOfCharges
 
     @ManyToOne
     CardBin cardBin
-
-    static CardProgram exampleCardProgram() {
-        CardProgram cp = new CardProgram()
-        cp.lateFeeStrategy = new PctWithMinAndMaxStrategy(minFee: 50.00, maxFee: 1250, percentOfOutstanding: 15)
-        cp.forexFeeStrategy = new PercentFeeStrategy(percentageToBeCharged: 1.2)
-        return cp
-    }
 
     @ManyToOne
     Bank bank

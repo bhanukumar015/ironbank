@@ -1,0 +1,43 @@
+<!DOCTYPE HTML>
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/thymeleaf-extras-springsecurity3"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout}">
+
+    <div th:fragment="noData">No card programs defined yet</div>
+    <div th:fragment="dataPresent">
+        <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+            <h3>Card Programs <span th:text="${#lists.size(cardPrograms)}"></span>  </h3>
+        </div>
+        <table class="table table-striped">
+            <thead>
+            <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Active</th>
+                <th>More</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="cp : ${cardPrograms}">
+                <td th:text="${cp.id}"/>
+                <td th:text="${cp.name}"/>
+                <td th:text="${cp.isActive}"></td>
+                <td><a th:href="@{/cardProgram/details(id=${cp.id})}">Details</a></td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+
+
+    <div layout:fragment="content">
+        <div
+                th:replace="${#lists.size(cardPrograms) > 0} ?
+        ~{this :: dataPresent} :
+        ~{this :: noData}">
+        </div>
+        <br>
+        <a class="btn btn-primary" href="/cardProgram/new">Create New Card Program</a>
+    </div>
+</html>
