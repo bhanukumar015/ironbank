@@ -1,8 +1,10 @@
 package hyperface.cms.util
 
 import hyperface.cms.domains.Card
+import hyperface.cms.domains.CreditCardProgram
 import hyperface.cms.domains.Customer
 import hyperface.cms.domains.CustomerTxn
+import hyperface.cms.domains.fees.Fee
 import org.hibernate.HibernateException
 import org.hibernate.engine.spi.SharedSessionContractImplementor
 import org.hibernate.id.IdentifierGenerator
@@ -18,8 +20,14 @@ class UniqueIdGenerator implements IdentifierGenerator {
         else if(object instanceof Card) {
             return "card_" + generateRandomString(16)
         }
-        if(object instanceof CustomerTxn) {
+        else if(object instanceof CustomerTxn) {
             return "txn_" + generateRandomString(16)
+        }
+        else if(object instanceof  CreditCardProgram) {
+            return "ccp_" + generateRandomString(16)
+        }
+        else if(object instanceof Fee) {
+            return "fee_" + generateRandomString(16)
         }
         return UUID.randomUUID().toString()
     }

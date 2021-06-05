@@ -1,6 +1,12 @@
 package hyperface.cms.domains
 
+import hyperface.cms.domains.converters.FeeJsonConverter
+import hyperface.cms.domains.converters.FeeStrategyJsonConverter
+import hyperface.cms.domains.converters.SimpleJsonConverter
 import hyperface.cms.domains.fees.FeeStrategy
+import hyperface.cms.domains.fees.JoiningFee
+import hyperface.cms.domains.fees.LatePaymentFee
+import javassist.Loader
 
 import javax.persistence.Column
 import javax.persistence.Convert
@@ -27,32 +33,38 @@ class CreditCardScheduleOfCharges {
                     FOREX_FEE
     }
 
-    @Convert(converter = JsonConverter.class)
+    @Convert(converter = FeeStrategyJsonConverter.class)
     @Column(columnDefinition="TEXT")
     FeeStrategy joiningFeeStrategy
 
-    @Convert(converter = JsonConverter.class)
+    @Convert(converter = FeeStrategyJsonConverter.class)
     @Column(columnDefinition="TEXT")
     FeeStrategy renewalFeeStrategy
 
-    @Convert(converter = JsonConverter.class)
+    @Convert(converter = FeeStrategyJsonConverter.class)
     @Column(columnDefinition="TEXT")
     FeeStrategy addonCardFeeStrategy
 
-    @Convert(converter = JsonConverter.class)
+    @Convert(converter = FeeStrategyJsonConverter.class)
     @Column(columnDefinition="TEXT")
     FeeStrategy emiProcessingFeeStrategy
 
-    @Convert(converter = JsonConverter.class)
-    @Column(columnDefinition="TEXT")
-    FeeStrategy lateFeeStrategy
+    @Convert(converter = SimpleJsonConverter.class)
+    @Column(columnDefinition="JSON")
+    LatePaymentFee lateFee
 
-    @Convert(converter = JsonConverter.class)
-    @Column(columnDefinition="TEXT")
-    FeeStrategy cashAdvanceStrategy
+    @Convert(converter = SimpleJsonConverter.class)
+    @Column(columnDefinition = "JSON")
+    JoiningFee joiningFee
 
-    @Convert(converter = JsonConverter.class)
+    @Convert(converter = FeeStrategyJsonConverter.class)
+    @Column(columnDefinition="TEXT")
+    FeeStrategy cashAdvanceFeeStrategy
+
+    @Convert(converter = FeeStrategyJsonConverter.class)
     @Column(columnDefinition="TEXT")
     FeeStrategy forexFeeStrategy
+
+//    List<FeeStrategy> dynamicFeeStructures
 
 }

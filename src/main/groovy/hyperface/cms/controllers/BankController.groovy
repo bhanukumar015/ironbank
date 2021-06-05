@@ -1,6 +1,6 @@
 package hyperface.cms.controllers
 
-import hyperface.cms.domains.CardProgram
+import hyperface.cms.domains.CreditCardProgram
 import hyperface.cms.repository.CardProgramRepository
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Controller
@@ -17,7 +17,7 @@ class BankController {
 
     @GetMapping("/cardPrograms")
     public String listCardPrograms(Model model) {
-        List<CardProgram> cardPrograms = cardProgramRepository.findAll()
+        List<CreditCardProgram> cardPrograms = cardProgramRepository.findAll()
         cardPrograms.each {
             println it.dump()
         }
@@ -27,12 +27,12 @@ class BankController {
 
     @GetMapping("/cardProgram")
     public String createCardProgram(Model model) {
-        model.addAttribute("cardProgram", new CardProgram())
+        model.addAttribute("cardProgram", new CreditCardProgram())
         return "cardProgram"
     }
 
     @PostMapping("/cardProgram")
-    public String submitCardProgram(@ModelAttribute CardProgram cardProgram, Model model) {
+    public String submitCardProgram(@ModelAttribute CreditCardProgram cardProgram, Model model) {
         model.addAttribute("cardProgram", cardProgram)
         return "result"
     }

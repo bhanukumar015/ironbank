@@ -2,7 +2,7 @@ package hyperface.cms.service
 
 import hyperface.cms.Constants
 import hyperface.cms.domains.Card
-import hyperface.cms.domains.CardProgram
+import hyperface.cms.domains.CreditCardProgram
 import hyperface.cms.domains.CreditAccount
 import hyperface.cms.domains.Customer
 import hyperface.cms.repository.CardRepository
@@ -39,7 +39,7 @@ class AccountService {
         return cards
     }
 
-    public Card createCard(Customer customer, CreditAccount creditAccount, CardProgram cardProgram) {
+    public Card createCard(Customer customer, CreditAccount creditAccount, CreditCardProgram cardProgram) {
         List<Card> existingOnes = getCards(creditAccount)
         if (existingOnes.size() > 0) {
             return existingOnes.get(0)

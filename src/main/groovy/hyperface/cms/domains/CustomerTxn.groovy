@@ -9,7 +9,6 @@ import javax.persistence.Entity
 import javax.persistence.EnumType
 import javax.persistence.Enumerated
 import javax.persistence.GeneratedValue
-import javax.persistence.GenerationType
 import javax.persistence.Id
 import javax.persistence.ManyToOne
 
@@ -20,20 +19,18 @@ class CustomerTxn {
     @GeneratedValue(generator = "customer_txn_id")
     String id
 
-    enum TxnType {
-        Authorize, Refund
-    }
-    enum Channel { MagStripe, Chip_And_Pin, NFC, Online }
+    enum Channel { MagStripe, Chip_And_Pin, NFC, Online, Other, NotApplicable }
 
     // incoming parameters
     boolean fullyAuthenticated = false
+
     @Enumerated(EnumType.STRING)
     Constants.CardSwitch cardSwitch
 
     String switchTransactionId
 
     @Enumerated(EnumType.STRING)
-    TxnType txnType
+    Constants.TxnType txnType
 
     @Enumerated(EnumType.STRING)
     Channel channel
@@ -69,5 +66,7 @@ class CustomerTxn {
 
     @UpdateTimestamp
     Date updatedOn
+
+    Date transactedOn
 
 }

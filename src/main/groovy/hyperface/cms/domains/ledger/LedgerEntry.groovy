@@ -33,6 +33,7 @@ class LedgerEntry {
     Date createdOn
     String merchantName
     String description
+    String merchantCategoryCode
     String reasonCode
     String note
 

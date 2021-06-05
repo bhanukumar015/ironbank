@@ -3,8 +3,8 @@ package hyperface.cms.commands
 import hyperface.cms.Constants
 import hyperface.cms.Constants.LedgerEntryType
 import hyperface.cms.domains.CustomerTxn
-import hyperface.cms.domains.CustomerTxn.TxnType
 import hyperface.cms.domains.ledger.LedgerEntry
+
 class CardTransaction {
     String id
     Date transactedOn
@@ -37,6 +37,6 @@ class CardTransaction {
         this.amount = customerTxn.billingAmount
         this.currency = customerTxn.card.creditAccount.defaultCurrency
         this.postedToLedger = false
-        this.transactionType = customerTxn.txnType == TxnType.Authorize ? TransactionType.Debit : TransactionType.Credit
+        this.transactionType = customerTxn.txnType == Constants.TxnType.AUTH ? TransactionType.Debit : TransactionType.Credit
     }
 }

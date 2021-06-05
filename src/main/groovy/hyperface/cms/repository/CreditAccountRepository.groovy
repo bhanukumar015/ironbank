@@ -6,6 +6,6 @@ import org.springframework.data.repository.CrudRepository
 import org.springframework.stereotype.Repository
 
 @Repository
-interface CreditAccountRepository extends CrudRepository<CreditAccount, Long> {
+interface CreditAccountRepository extends CrudRepository<CreditAccount, String> {
 
 }

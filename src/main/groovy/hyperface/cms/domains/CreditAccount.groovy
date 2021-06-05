@@ -23,6 +23,9 @@ class CreditAccount extends Account {
     Double approvedCreditLimit
     Double availableCreditLimit
 
+    Boolean allowTxnLog = true
+    Date lastTxnDate
+
     @ManyToOne
     @JoinColumn(name="customer_id")
     Customer customer

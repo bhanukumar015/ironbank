@@ -44,15 +44,16 @@ class PaymentService {
         txn.systemTraceAuditNumber = req.systemTraceAuditNumber
         txn.txnRefId = req.transactionId
         txn.channel = CustomerTxn.Channel.Chip_And_Pin
-        txn.txnType = req.getTxnType()
+        txn.txnType = req.transactionType
         txn.transactionCurrency = req.transactionCurrency
         txn.transactionAmount = req.transactionAmount
         txn.billingAmount = req.billingAmount
         txn.billingCurrency = req.billingCurrency
         txn.mcc = req.merchantCategoryCode
-        if(txn.txnType == CustomerTxn.TxnType.Authorize) {
+        if(txn.txnType == Constants.TxnType.AUTH) {
             txn.authorizedAmount = req.billingAmount
         }
+        txn.transactedOn = req.transactionDate ?: new Date()
         txn.postedToLedger = false
         return txn
     }
@@ -117,7 +118,7 @@ class PaymentService {
         customerTxnRepository.save(txn)
     }
 
-    public void processAuthCapture(CustomerTxn customerTxn) {
+    public void processSettlementDebit(CustomerTxn customerTxn) {
         Card card = (Card) customerTxn.card
         CreditAccount creditAccount = card.getCreditAccount()
         LedgerEntry debitEntry = createDebitEntry(creditAccount, customerTxn)

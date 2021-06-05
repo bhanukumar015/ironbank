@@ -10,6 +10,7 @@ import hyperface.cms.domains.ledger.LedgerEntry
 import hyperface.cms.repository.CreditAccountRepository
 import hyperface.cms.repository.CustomerTxnRepository
 import hyperface.cms.repository.LedgerEntryRepository
+import io.vavr.control.Either
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Service
 
@@ -26,7 +27,36 @@ class AuthorizationManager {
     @Autowired
     private CustomerTxnRepository customerTxnRepository
 
-    public Optional<RejectTxnResponse> shouldRejectAuthDebitTxn(AuthorizationRequest req) {
+    @Autowired
+    PaymentService paymentService
+
+
+    public Either<RejectTxnResponse, CustomerTxn> performAuth(AuthorizationRequest req) {
+        Card card = req.card
+        Optional<RejectTxnResponse> rejectTxnResponse = this.shouldRejectAuthTxn(req)
+        if (rejectTxnResponse.isPresent()) {
+            return Either.left(rejectTxnResponse.get())
+        }
+        else {
+            CustomerTxn customerTxn = paymentService.processAuthorization(req)
+            return Either.right(customerTxn)
+        }
+    }
+
+    public Either<RejectTxnResponse, CustomerTxn> performRefund(AuthorizationRequest req) {
+        Card card = req.card
+        Optional<RejectTxnResponse> rejectTxnResponse = this.shouldRejectRefundTxn(req)
+        if (rejectTxnResponse.isPresent()) {
+            return Either.left(rejectTxnResponse.get())
+        }
+        else {
+            CustomerTxn customerTxn = paymentService.processAuthorization(req)
+            return Either.right(customerTxn)
+        }
+    }
+
+
+    public Optional<RejectTxnResponse> shouldRejectAuthTxn(AuthorizationRequest req) {
         Card card = req.card
         Optional<RejectTxnResponse> rejectTxnResponse = new Optional<RejectTxnResponse>()
         def setRejectReason = { Constants.RejectionCode rc->
@@ -44,7 +74,7 @@ class AuthorizationManager {
         return rejectTxnResponse
     }
 
-    public Optional<RejectTxnResponse> shouldRejectReversalTxn(AuthorizationRequest req) {
+    public Optional<RejectTxnResponse> shouldRejectRefundTxn(AuthorizationRequest req) {
         Card card = req.card
         Optional<RejectTxnResponse> rejectTxnResponse = new Optional<RejectTxnResponse>()
         def setRejectReason = { Constants.RejectionCode rc->

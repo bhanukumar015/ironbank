@@ -6,7 +6,7 @@ import hyperface.cms.commands.CreateCardRequest
 import hyperface.cms.commands.CreateCreditAccountRequest
 import hyperface.cms.commands.FetchCardTransactionsRequest
 import hyperface.cms.domains.Card
-import hyperface.cms.domains.CardProgram
+import hyperface.cms.domains.CreditCardProgram
 import hyperface.cms.domains.CreditAccount
 import hyperface.cms.domains.Customer
 import hyperface.cms.domains.CustomerTxn
@@ -74,7 +74,7 @@ public class CustomerController {
         println req.dump()
         Customer customer = customerRepository.findById(req.customerId).get()
         CreditAccount creditAccount = creditAccountRepository.findById(req.creditAccountId).get()
-        CardProgram cardProgram = cardProgramRepository.findById(req.cardProgramId).get()
+        CreditCardProgram cardProgram = cardProgramRepository.findById(req.cardProgramId).get()
 
         // check if a card already exists for this customer under this program
 

@@ -41,5 +41,37 @@ class Constants {
         LOWER_OF_PCT_OR_X
     }
 
+    enum TxnType {
+        AUTH,
+        AUTH_REVERSAL,
+        REFUND,
+        REFUND_REVERSAL,
+        SETTLE_DEBIT,
+        SETTLE_CREDIT,
+        SETTLE_DEBIT_CASH,
+        SETTLE_CREDIT_CASH,
+        PAYMENT,
+        PAYMENT_REVERSAL,
+        CASHBACK,
+        CASHBACK_REVERSAL,
+        REPAYMENT,
+        REPAYMENT_REVERSAL,
+        FEE,
+        FEE_REVERSAL,
+        TAX,
+        TAX_REVERSAL,
+        INTEREST,
+        INTEREST_REVERSAL,
+        SURCHARGE,
+        SURCHARGE_REVERSAL,
+        EMI,
+
+        // LEDGER SPECIFIC TYPES
+        PURCHASE,
+        PURCHASE_REVERSAL,
+        CASH_WITHDRAWAL_REVERSAL,
+        CASH_WITHDRAWAL
+    }
+
 
 }
