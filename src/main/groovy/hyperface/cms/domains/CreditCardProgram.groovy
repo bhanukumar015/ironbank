@@ -28,6 +28,8 @@ class CreditCardProgram extends HyperfaceProgram {
     Integer defaultDailyTransactionLimit
     Integer defaultDailyCashWithdrawalLimit
 
+    Integer annualizedPercentageRateInBps
+
     @ManyToOne
     CreditCardScheduleOfCharges scheduleOfCharges
 

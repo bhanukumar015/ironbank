@@ -10,6 +10,8 @@ import hyperface.cms.domains.fees.HigherOfPctOrMinValueStrategy
 import hyperface.cms.domains.fees.JoiningFee
 import hyperface.cms.domains.fees.LatePaymentFee
 import hyperface.cms.domains.fees.SlabWiseStrategy
+import hyperface.cms.domains.interest.Condition
+import hyperface.cms.domains.interest.InterestCondition
 import hyperface.cms.repository.ChargesRepository
 import hyperface.cms.repository.CreditAccountRepository
 import org.junit.jupiter.api.Test
@@ -88,9 +90,18 @@ class CmsApplicationTests {
 				new FeeSlab(minValue: 10001, maxValue: Integer.MAX_VALUE, feeAmount: 500),
 		]
 		charges.lateFee = new LatePaymentFee(feeStrategy: lateFeeStrategy, bufferDaysPastDue: 3)
-		chargesRepository.save(charges)
 
+		// don't charge interest for fee transactions in the given cycle
+		InterestCondition cond1 = new InterestCondition()
+		cond1.interestRateInBps = 0
+		cond1.conditions = [new Condition(parameter: Condition.Parameter.TRANSACTION_TYPE,
+								matchCriteria: Condition.MatchCriteria.EQUALS,
+								value: Constants.TxnType.FEE)]
+		charges.interestConditions = [cond1]
+		chargesRepository.save(charges)
 		assert charges.id != null
 	}
+
+
 
 }

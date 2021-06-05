@@ -1,15 +1,16 @@
 package hyperface.cms.domains
 
-import hyperface.cms.domains.converters.FeeJsonConverter
 import hyperface.cms.domains.converters.FeeStrategyJsonConverter
 import hyperface.cms.domains.converters.SimpleJsonConverter
 import hyperface.cms.domains.fees.FeeStrategy
 import hyperface.cms.domains.fees.JoiningFee
 import hyperface.cms.domains.fees.LatePaymentFee
+import hyperface.cms.domains.interest.InterestCondition
 import javassist.Loader
 
 import javax.persistence.Column
 import javax.persistence.Convert
+import javax.persistence.Converter
 import javax.persistence.Entity
 import javax.persistence.GeneratedValue
 import javax.persistence.GenerationType
@@ -66,5 +67,9 @@ class CreditCardScheduleOfCharges {
     FeeStrategy forexFeeStrategy
 
 //    List<FeeStrategy> dynamicFeeStructures
+
+    @Convert(converter = SimpleJsonConverter.class)
+    @Column(columnDefinition = "JSON")
+    List<InterestCondition> interestConditions
 
 }
