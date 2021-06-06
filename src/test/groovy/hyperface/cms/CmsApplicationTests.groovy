@@ -11,12 +11,14 @@ import hyperface.cms.domains.fees.JoiningFee
 import hyperface.cms.domains.fees.LatePaymentFee
 import hyperface.cms.domains.fees.SlabWiseStrategy
 import hyperface.cms.domains.interest.Condition
-import hyperface.cms.domains.interest.InterestCondition
+import hyperface.cms.domains.interest.InterestCriteria
 import hyperface.cms.repository.ChargesRepository
 import hyperface.cms.repository.CreditAccountRepository
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
+
+import hyperface.cms.Constants.TxnType
 
 @SpringBootTest
 class CmsApplicationTests {
@@ -30,6 +32,7 @@ class CmsApplicationTests {
 
 	@Autowired
 	CreditAccountRepository creditAccountRepository
+
 
 	private AuthorizationRequest getBasicDebitReq() {
 		AuthorizationRequest req = new AuthorizationRequest()
@@ -92,16 +95,24 @@ class CmsApplicationTests {
 		charges.lateFee = new LatePaymentFee(feeStrategy: lateFeeStrategy, bufferDaysPastDue: 3)
 
 		// don't charge interest for fee transactions in the given cycle
-		InterestCondition cond1 = new InterestCondition()
-		cond1.interestRateInBps = 0
-		cond1.conditions = [new Condition(parameter: Condition.Parameter.TRANSACTION_TYPE,
+		InterestCriteria cri1 = new InterestCriteria()
+		cri1.name = "Interest on fees"
+		cri1.aprInBps = 4000
+		cri1.conditions = [new Condition(parameter: Condition.Parameter.TRANSACTION_TYPE,
 								matchCriteria: Condition.MatchCriteria.EQUALS,
-								value: Constants.TxnType.FEE)]
-		charges.interestConditions = [cond1]
+								value: TxnType.FEE.name())]
+		cri1.precedence = 10000
+
+		InterestCriteria cri2 = new InterestCriteria()
+		cri2.name = "Interest on tax"
+		cri2.aprInBps = 3500
+		cri2.conditions = [new Condition(parameter: Condition.Parameter.TRANSACTION_TYPE,
+								matchCriteria: Condition.MatchCriteria.IN_LIST,
+								value: [TxnType.TAX, TxnType.TAX_REVERSAL].collect({it.name()}).join(",") )]
+		cri1.precedence = 5000
+
+		charges.interestCriteriaList = [cri1, cri2]
 		chargesRepository.save(charges)
 		assert charges.id != null
 	}
-
-
-
 }

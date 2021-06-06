@@ -30,6 +30,7 @@ class LedgerEntry {
     Double amount
     @Enumerated(EnumType.STRING)
     Constants.LedgerEntryType ledgerEntryType
+    Constants.TxnType txnType
     Date createdOn
     String merchantName
     String description

@@ -1,22 +1,29 @@
 package hyperface.cms.service
 
 import hyperface.cms.Constants
+import hyperface.cms.Constants.LedgerEntryType
 import hyperface.cms.commands.AuthorizationRequest
 import hyperface.cms.commands.SettlementRequest
 import hyperface.cms.domains.Card
 import hyperface.cms.domains.CreditAccount
+import hyperface.cms.domains.CreditCardProgram
 import hyperface.cms.domains.CustomerTxn
+import hyperface.cms.domains.interest.InterestCriteria
 import hyperface.cms.domains.ledger.LedgerEntry
 import hyperface.cms.repository.CardRepository
 import hyperface.cms.repository.CreditAccountRepository
 import hyperface.cms.repository.CustomerTxnRepository
 import hyperface.cms.repository.LedgerEntryRepository
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Service
 
 
 @Service
 class PaymentService {
+
+    Logger log = LoggerFactory.getLogger(PaymentService.class);
 
     @Autowired
     private LedgerEntryRepository ledgerEntryRepository
@@ -65,7 +72,7 @@ class PaymentService {
         req.card.creditAccount.availableCreditLimit -= txn.billingAmount
         txn.availableBalanceAfterTxn = req.card.creditAccount.availableCreditLimit
         customerTxnRepository.save(txn)
-        println txn.dump()
+        log.info "Txn created for incoming authorization request: " + txn.dump()
         creditAccountRepository.save(req.card.creditAccount)
         return txn
     }
@@ -101,6 +108,13 @@ class PaymentService {
         }
         creditAccount.currentBalance -= ledgerEntry.amount
         txn.capturedAmount += req.settlementAmount
+        // set txntype
+        if(txn.txnType == Constants.TxnType.SETTLE_DEBIT) {
+            ledgerEntry.txnType = Constants.TxnType.PURCHASE
+        }
+        else if(txn.txnType == Constants.TxnType.SETTLE_DEBIT_CASH) {
+            ledgerEntry.txnType = Constants.TxnType.CASH_WITHDRAWAL
+        }
         ledgerEntryRepository.save(ledgerEntry)
         creditAccountRepository.save(creditAccount)
         customerTxnRepository.save(txn)
@@ -113,49 +127,37 @@ class PaymentService {
         CustomerTxn txn = customerTxnRepository.findAuthTxnByCardAndRRN(card, req.retrievalReferenceNumber)
         LedgerEntry ledgerEntry = createCreditEntry(creditAccount, txn, req.settlementAmount)
         creditAccount.currentBalance += ledgerEntry.amount
+        if(txn.txnType == Constants.TxnType.SETTLE_CREDIT) {
+            ledgerEntry.txnType = Constants.TxnType.PURCHASE_REVERSAL
+        }
+        else if(txn.txnType == Constants.TxnType.SETTLE_CREDIT_CASH) {
+            ledgerEntry.txnType = Constants.TxnType.CASH_WITHDRAWAL_REVERSAL
+        }
         ledgerEntryRepository.save(ledgerEntry)
         creditAccountRepository.save(creditAccount)
         customerTxnRepository.save(txn)
     }
 
-    public void processSettlementDebit(CustomerTxn customerTxn) {
-        Card card = (Card) customerTxn.card
-        CreditAccount creditAccount = card.getCreditAccount()
-        LedgerEntry debitEntry = createDebitEntry(creditAccount, customerTxn)
-        creditAccount.availableCreditLimit -= customerTxn.billingAmount
-        ledgerEntryRepository.save(debitEntry)
-        creditAccountRepository.save(creditAccount)
-        return
-    }
-
-    public void processRepayment(CustomerTxn customerTxn) {
-        Card card = (Card) customerTxn.paymentInstrument
-        CreditAccount creditAccount = card.getCreditAccount()
-        LedgerEntry creditEntry = recordRepaymentTxn(creditAccount, customerTxn)
-        ledgerEntryRepository.save(creditEntry)
-        return
-    }
-
-    public LedgerEntry createDebitEntry(CreditAccount account, CustomerTxn customerTxn) {
+    private LedgerEntry createDebitEntry(CreditAccount account, CustomerTxn customerTxn) {
         LedgerEntry debitEntry = new LedgerEntry()
         debitEntry.account = account
         debitEntry.amount = customerTxn.billingAmount
         debitEntry.createdOn = new Date()
         debitEntry.openingBalance = account.currentBalance
-        debitEntry.ledgerEntryType = Constants.LedgerEntryType.Debit
+        debitEntry.ledgerEntryType = LedgerEntryType.Debit
         debitEntry.customerTxn = customerTxn
         debitEntry.description = customerTxn.description
         debitEntry.closingBalance = account.currentBalance - customerTxn.billingAmount
         return debitEntry
     }
 
-    public LedgerEntry createDebitEntry(CreditAccount account, CustomerTxn customerTxn, Double settlementAmount) {
+    private LedgerEntry createDebitEntry(CreditAccount account, CustomerTxn customerTxn, Double settlementAmount) {
         LedgerEntry debitEntry = new LedgerEntry()
         debitEntry.account = account
         debitEntry.amount = settlementAmount
         debitEntry.createdOn = new Date()
         debitEntry.openingBalance = account.currentBalance
-        debitEntry.ledgerEntryType = Constants.LedgerEntryType.Debit
+        debitEntry.ledgerEntryType = LedgerEntryType.Debit
         debitEntry.customerTxn = customerTxn
         debitEntry.merchantName = customerTxn.merchantName
         debitEntry.description = customerTxn.description
@@ -163,13 +165,13 @@ class PaymentService {
         return debitEntry
     }
 
-    public LedgerEntry createCreditEntry(CreditAccount account, CustomerTxn customerTxn, Double settlementAmount) {
+    private LedgerEntry createCreditEntry(CreditAccount account, CustomerTxn customerTxn, Double settlementAmount) {
         LedgerEntry creditEntry = new LedgerEntry()
         creditEntry.account = account
         creditEntry.amount = settlementAmount
         creditEntry.openingBalance = account.currentBalance
         creditEntry.closingBalance = account.currentBalance + settlementAmount
-        creditEntry.ledgerEntryType = Constants.LedgerEntryType.Credit
+        creditEntry.ledgerEntryType = LedgerEntryType.Credit
         creditEntry.description = customerTxn.description
         creditEntry.customerTxn = customerTxn
         creditEntry.merchantName = customerTxn.merchantName
@@ -178,32 +180,24 @@ class PaymentService {
         return creditEntry
     }
 
-    public LedgerEntry createCreditEntry(CreditAccount account, CustomerTxn customerTxn) {
+    private LedgerEntry createCreditEntry(CreditAccount account, CustomerTxn customerTxn) {
         LedgerEntry creditEntry = new LedgerEntry()
         creditEntry.account = account
-        creditEntry.amount = customerTxn.amount
+        creditEntry.amount = customerTxn.billingAmount
         creditEntry.openingBalance = account.currentBalance
-        creditEntry.closingBalance = account.currentBalance + customerTxn.amount
-        creditEntry.ledgerEntryType = Constants.LedgerEntryType.Credit
+        creditEntry.closingBalance = account.currentBalance + customerTxn.billingAmount
+        creditEntry.ledgerEntryType = LedgerEntryType.Credit
         creditEntry.description = customerTxn.description
         creditEntry.customerTxn = customerTxn
         creditEntry.createdOn = new Date()
         return creditEntry
     }
 
-    public LedgerEntry recordRepaymentTxn(CreditAccount account, CustomerTxn customerTxn) {
-        if (customerTxn.txnType == CustomerTxn.TxnType.Repayment) {
-            return null
-        }
-
-        return createCreditEntry(account, customerTxn)
-    }
-
-    public LedgerEntry recordRefundTxn(CreditAccount account, CustomerTxn customerTxn) {
-        return createCreditEntry(account, customerTxn)
-    }
-
-    public LedgerEntry recordCashbackTxn(CreditAccount account, CustomerTxn customerTxn) {
-        return null
+    public Integer getInterestRateForTxn(LedgerEntry ledgerEntry) {
+        CreditCardProgram program = ledgerEntry.customerTxn.card.cardProgram
+        InterestCriteria matchedCriteria = program.scheduleOfCharges.interestCriteriaList?.find({
+            return it.checkForMatch(ledgerEntry)
+        })
+        return matchedCriteria?.getAprInBps()?:program.annualizedPercentageRateInBps
     }
 }
