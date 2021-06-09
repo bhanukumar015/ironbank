@@ -29,18 +29,6 @@ import org.springframework.web.bind.annotation.RestController
 public class PaymentController {
 
     @Autowired
-    CustomerRepository customerRepository
-
-    @Autowired
-    CreditAccountRepository creditAccountRepository
-
-    @Autowired
-    CardProgramRepository cardProgramRepository
-
-    @Autowired
-    AccountService accountService
-
-    @Autowired
     PaymentService paymentService
 
     @Autowired
@@ -57,10 +45,10 @@ public class PaymentController {
         println req.dump()
         Card card = cardRepository.findById(req.cardId).get()
         req.card = card
-        if(req.transactionType == AuthorizationRequest.TransactionType.DEBIT) {
+        if(req.transactionType == Constants.TxnType.AUTH) {
             return performAuthDebit(req)
         }
-        else if(req.transactionType == AuthorizationRequest.TransactionType.REVERSAL) {
+        else if(req.transactionType == Constants.TxnType.AUTH_REVERSAL) {
             return performAuthReversal(req)
         }
         return [responseCode: "01", 'partnerReferenceNumber': System.currentTimeMillis().toString()]
@@ -88,33 +76,5 @@ public class PaymentController {
             CustomerTxn txn = paymentService.processAuthorization(req)
             return ["responseCode": "00", "partnerReferenceNumber": txn.id.toString()]
         }
-    }
-
-    // this will be allowed only by
-    @RequestMapping(value = "/createCreditAccount", method = RequestMethod.POST,
-                    consumes = MediaType.APPLICATION_FORM_URLENCODED_VALUE)
-    public CreditAccount createCreditAccount(CreateCreditAccountRequest req) {
-        println req.dump()
-        Long customerId = req.customerId
-        Customer customer = customerRepository.findById(customerId).get()
-        Integer approvedCreditLimit = req.approvedCreditLimit
-        CreditAccount creditAccount = accountService.createCreditAccount(customer, Constants.Currency.INR, approvedCreditLimit)
-        return creditAccount
-    }
-
-    @RequestMapping(value = "/createCard", method = RequestMethod.POST,
-            consumes = MediaType.APPLICATION_FORM_URLENCODED_VALUE)
-    public Card createCard(CreateCardRequest req) {
-        println req.dump()
-        Customer customer = customerRepository.findById(req.customerId).get()
-        CreditAccount creditAccount = creditAccountRepository.findById(req.creditAccountId).get()
-        CreditCardProgram cardProgram = cardProgramRepository.findById(req.cardProgramId).get()
-
-        // check if a card already exists for this customer under this program
-
-
-        Card card = accountService.createCard(customer, creditAccount, cardProgram)
-
-        return card
     }
 }

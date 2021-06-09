@@ -66,8 +66,6 @@ class CreditCardScheduleOfCharges {
 
 //    List<FeeStrategy> dynamicFeeStructures
 
-
-
     @Convert(converter = SimpleJsonConverter.class)
     @Column(columnDefinition = "JSON")
     List<InterestCriteria> interestCriteriaList
