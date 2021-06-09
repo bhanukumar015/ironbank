@@ -17,11 +17,11 @@ public class NiumSwitchProvider {
     @Autowired
     SimpleJsonConverter jsonConverter
 
-    String endpoint = 'http://niumproxy.hyperface.in/api/v1/client/c8fbf2b7-1b3e-47a6-9ce2-86539d05d956/customer'
-    String apiKey = 'LnqHbp0r0S4rBQE53FHWW8k1nIHgfRQb4iJk1glR'
-    String clientName = 'Hyperface'
+    private String endpoint = 'http://niumproxy.hyperface.in/api/v1/client/c8fbf2b7-1b3e-47a6-9ce2-86539d05d956/customer'
+    private String apiKey = 'LnqHbp0r0S4rBQE53FHWW8k1nIHgfRQb4iJk1glR'
+    private String clientName = 'Hyperface'
 
-    public static ObjectMapper objectMapper = new ObjectMapper();
+    private static ObjectMapper objectMapper = new ObjectMapper();
 
     public Customer createCustomer(Customer customer){
         def request = (HttpURLConnection) (new URL(endpoint).openConnection())

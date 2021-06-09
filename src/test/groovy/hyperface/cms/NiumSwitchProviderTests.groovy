@@ -19,7 +19,7 @@ class NiumSwitchProviderTests {
 
     private static Random random = new Random(System.currentTimeMillis())
 
-    String responseCode = 200
+    private String responseCode = 200
 
     private Customer getTestCustomer(){
         Customer customer = new Customer()
@@ -56,7 +56,6 @@ class NiumSwitchProviderTests {
     void testNiumSwitchCreateCustomer(){
         Customer customer = this.getTestCustomer()
         Customer updatedCustomer = niumSwitchProvider.createCustomer(customer)
-        println(customer.switchMetadata)
         assert updatedCustomer.switchMetadata != ""
     }
 }
