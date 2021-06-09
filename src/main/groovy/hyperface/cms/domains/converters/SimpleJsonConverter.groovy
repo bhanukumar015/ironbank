@@ -8,11 +8,13 @@ import com.fasterxml.jackson.databind.jsontype.PolymorphicTypeValidator
 import hyperface.cms.domains.fees.Fee
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
+import org.springframework.context.annotation.Configuration
 
 import javax.persistence.AttributeConverter
 import javax.persistence.Converter
 
 @Converter
+@Configuration
 class SimpleJsonConverter implements AttributeConverter<Object, String> {
 
     Logger log = LoggerFactory.getLogger(SimpleJsonConverter.class);

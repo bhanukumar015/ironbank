@@ -17,13 +17,25 @@ class Customer {
     @GeneratedValue(generator = "customer_id")
     String id
 
-    String firstname
-    String middlename
-    String lastname
+    String firstName
+    String middleName
+    String lastName
+    String preferredName
 
-    String emailAddress
+    String dateOfBirth
+    String email
+    String mobile
     String countryCode
-    String mobileNumber
+    String nationality
+
+    String deliveryCity
+    String deliveryZipCode
+    String deliveryAddress1
+    String billingCity
+    String billingZipCode
+    String billingAddress1
+
+    String switchMetadata
 
     @ManyToOne
     Client client
