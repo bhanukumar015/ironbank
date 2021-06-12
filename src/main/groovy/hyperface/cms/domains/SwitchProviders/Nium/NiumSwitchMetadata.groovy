@@ -1,4 +1,4 @@
-package hyperface.cms.domains.SwitchProviders
+package hyperface.cms.domains.SwitchProviders.Nium
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties
 

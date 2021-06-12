@@ -1,9 +1,10 @@
 package hyperface.cms
 
+import hyperface.cms.domains.Address
 import hyperface.cms.domains.Customer
-import hyperface.cms.service.SwitchProviders.NiumSwitchProvider
+import hyperface.cms.service.SwitchProviders.Nium.NiumSwitchProvider
+import org.springframework.http.HttpStatus
 import org.junit.jupiter.api.Test
-import org.assertj.core.*
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 
@@ -15,11 +16,9 @@ class NiumSwitchProviderTests {
     }
 
     @Autowired
-    NiumSwitchProvider niumSwitchProvider
+    NiumSwitchProvider niumSwitchProvider = new NiumSwitchProvider()
 
     private static Random random = new Random(System.currentTimeMillis())
-
-    private String responseCode = 200
 
     private Customer getTestCustomer(){
         Customer customer = new Customer()
@@ -32,20 +31,19 @@ class NiumSwitchProviderTests {
         customer.mobile = getRandomMobileNumber()
         customer.countryCode = "IN"
         customer.nationality = "IN"
-        customer.deliveryCity = "Bengaluru"
-        customer.deliveryZipCode = "560001"
-        customer.deliveryAddress1 = "1, MG Road"
-        customer.billingCity = customer.deliveryCity
-        customer.billingZipCode = customer.deliveryZipCode
-        customer.billingAddress1 = customer.deliveryAddress1
+        customer.currentAddress = new Address()
+        customer.currentAddress.city = "Bengaluru"
+        customer.currentAddress.pincode = "560001"
+        customer.currentAddress.line1 = "1, MG Road"
 
         return customer
     }
 
+    // TODO: move to utils? can be used by other tests
     private String getRandomEmailAddress(){
         def length = 16
         def pool = ['a'..'z','A'..'Z',0..9,'.'].flatten()
-        return ((0..length-1).collect{pool[random.nextInt(pool.size())]}).join().concat('@gmail.com')
+        return ((0..length-1).collect{pool[random.nextInt(pool.size())]}).join().concat('1@gmail.com')
     }
 
     private String getRandomMobileNumber(){
@@ -55,7 +53,10 @@ class NiumSwitchProviderTests {
     @Test
     void testNiumSwitchCreateCustomer(){
         Customer customer = this.getTestCustomer()
-        Customer updatedCustomer = niumSwitchProvider.createCustomer(customer)
-        assert updatedCustomer.switchMetadata != ""
+        HttpStatus response = niumSwitchProvider.createCustomer(customer)
+        println("Test executed with response code: ${response.value()}")
+        sleep(180000)
+        // TODO: add better assert statements based on final response
+        assert response == HttpStatus.OK
     }
 }
