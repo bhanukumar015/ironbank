@@ -59,13 +59,11 @@ class NiumSwitchProvider {
         return HttpStatus.OK
     }
 
-    public HttpStatus createCustomerAsync(Customer customer){
+    public void createCustomerAsync(Customer customer){
         String requestBody = createNiumRequestCustomer(customer)
         createCustomerCallback.customer = customer
         createCustomerCallback.retries = MAX_RETRIES
         executeAsyncHttpPostRequest(createCustomerEndpoint, requestBody, createCustomerCallback)
-        // TODO: send appropriate response
-        return HttpStatus.OK
     }
 
     public void executeAsyncHttpPostRequest(String endpoint, String body, FutureCallback<HttpResponse> callback){
