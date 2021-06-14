@@ -1,12 +1,14 @@
 package hyperface.cms.service.SwitchProviders.Nium
 
+import com.fasterxml.jackson.core.type.TypeReference
 import com.fasterxml.jackson.databind.ObjectMapper
 import hyperface.cms.domains.Customer
-import hyperface.cms.domains.SwitchProviders.Nium.NiumSwitchMetadata
 import hyperface.cms.repository.CustomerRepository
 import org.apache.http.HttpResponse
 import org.apache.http.concurrent.FutureCallback
 import org.apache.http.util.EntityUtils
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Component
 
@@ -16,33 +18,38 @@ class NiumCreateCustomerCallback implements FutureCallback<HttpResponse> {
     @Autowired
     CustomerRepository customerRepository
 
+    @Autowired
+    NiumSwitchProvider niumSwitchProvider
+
     Customer customer
     int retries
 
     private static ObjectMapper objectMapper = new ObjectMapper()
+
+    private Logger log = LoggerFactory.getLogger(NiumCreateCustomerCallback.class)
 
     @Override
     void completed(HttpResponse result) {
         int responseCode = result.getStatusLine().getStatusCode()
         if(responseCode != 200 && retries > 0){
             // Response code 429 = Too many requests. Wait before retrying
-            // TODO: Update the sleep duration(currently set to 30s) for response code 429. Need to verify rate limiting from Nium docs
+            // TODO: Update the sleep duration(currently set to 30s) for response code 429.
+            //  Need to verify rate limiting from Nium docs
             if(responseCode == 429){
                 sleep(30000)
             }
-            // TODO: Replace all print statements with log entries
-            println("Retrying async call to nium. Retries left: ${retries}")
+            log.info "Retrying async call to nium. Retries left: ${retries}"
             String requestBody = objectMapper.writeValueAsString(customer)
             this.retries -= 1
-            NiumSwitchProvider.executeAsyncHttpPostRequest(NiumSwitchProvider.createCustomerEndpoint, requestBody, this)
+            niumSwitchProvider.executeAsyncHttpPostRequest(NiumSwitchProvider.createCustomerEndpoint, requestBody, this)
         }
 
         else if(responseCode == 200){
             String response = EntityUtils.toString(result.getEntity())
-            def metadata = objectMapper.readValue(response, NiumSwitchMetadata.class)
+            def metadata = objectMapper.readValue(response, new TypeReference<Map<String,Object>>(){})
             Map<String, Object> niumMetadata = new HashMap<>()
-            niumMetadata.put("nium.customerHashId", metadata.customerHashId)
-            niumMetadata.put("nium.walletId", metadata.walletHashId)
+            niumMetadata.put("nium.customerHashId", metadata.get('customerHashId'))
+            niumMetadata.put("nium.walletId", metadata.get('walletHashId'))
             customer.switchMetadata = niumMetadata
             customerRepository.save(customer)
         }
@@ -51,11 +58,11 @@ class NiumCreateCustomerCallback implements FutureCallback<HttpResponse> {
     @Override
     void failed(Exception ex) {
         if (retries > 0){
-            println("Async call to Nium failed with exception: ${ex.message}")
-            println("Retrying async call to nium. Retries left: ${retries}")
+            log.info "Async call to Nium failed with exception: ${ex.message}"
+            log.info "Retrying async call to nium. Retries left: ${retries}"
             String requestBody = objectMapper.writeValueAsString(customer)
             this.retries -= 1
-            NiumSwitchProvider.executeAsyncHttpPostRequest(NiumSwitchProvider.createCustomerEndpoint, requestBody, this)
+            niumSwitchProvider.executeAsyncHttpPostRequest(NiumSwitchProvider.createCustomerEndpoint, requestBody, this)
         }
     }
 

@@ -54,7 +54,14 @@ class NiumSwitchProviderTests {
     void testNiumSwitchCreateCustomer(){
         Customer customer = this.getTestCustomer()
         HttpStatus response = niumSwitchProvider.createCustomer(customer)
-        println("Test executed with response code: ${response.value()}")
+        // TODO: add better assert statements based on final response
+        assert response == HttpStatus.OK
+    }
+
+    @Test
+    void testNiumSwitchCreateCustomerAsync(){
+        Customer customer = this.getTestCustomer()
+        HttpStatus response = niumSwitchProvider.createCustomerAsync(customer)
         sleep(180000)
         // TODO: add better assert statements based on final response
         assert response == HttpStatus.OK
