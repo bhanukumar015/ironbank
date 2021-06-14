@@ -130,7 +130,7 @@ class NiumSwitchProvider {
         }
     }
 
-    private String createNiumRequestCustomer(Customer customer)
+    public String createNiumRequestCustomer(Customer customer)
     {
         Object niumCustomer = new Object(){
             String firstName = customer.firstName
