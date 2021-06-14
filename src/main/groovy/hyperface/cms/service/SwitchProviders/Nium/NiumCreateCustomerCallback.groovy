@@ -39,7 +39,7 @@ class NiumCreateCustomerCallback implements FutureCallback<HttpResponse> {
                 sleep(30000)
             }
             log.info "Retrying async call to nium. Retries left: ${retries}"
-            String requestBody = objectMapper.writeValueAsString(customer)
+            String requestBody = niumSwitchProvider.createNiumRequestCustomer(customer)
             this.retries -= 1
             niumSwitchProvider.executeAsyncHttpPostRequest(NiumSwitchProvider.createCustomerEndpoint, requestBody, this)
         }
@@ -60,7 +60,7 @@ class NiumCreateCustomerCallback implements FutureCallback<HttpResponse> {
         if (retries > 0){
             log.info "Async call to Nium failed with exception: ${ex.message}"
             log.info "Retrying async call to nium. Retries left: ${retries}"
-            String requestBody = objectMapper.writeValueAsString(customer)
+            String requestBody = niumSwitchProvider.createNiumRequestCustomer(customer)
             this.retries -= 1
             niumSwitchProvider.executeAsyncHttpPostRequest(NiumSwitchProvider.createCustomerEndpoint, requestBody, this)
         }
