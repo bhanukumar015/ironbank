@@ -1,11 +1,12 @@
 package hyperface.cms.domains
 
+import hyperface.cms.domains.converters.SimpleJsonConverter
 import org.hibernate.annotations.GenericGenerator
 
 import javax.persistence.Column
+import javax.persistence.Convert
 import javax.persistence.Entity
 import javax.persistence.GeneratedValue
-import javax.persistence.GenerationType
 import javax.persistence.Id
 import javax.persistence.ManyToOne
 import javax.persistence.OneToMany
@@ -17,13 +18,24 @@ class Customer {
     @GeneratedValue(generator = "customer_id")
     String id
 
-    String firstname
-    String middlename
-    String lastname
+    String firstName
+    String middleName
+    String lastName
+    String preferredName
 
-    String emailAddress
+    String dateOfBirth
+    String email
+    String mobile
     String countryCode
-    String mobileNumber
+    String nationality
+
+    @Convert(converter = SimpleJsonConverter.class)
+    Address currentAddress
+    @Convert(converter = SimpleJsonConverter.class)
+    Address permanentAddress
+
+    @Convert(converter = SimpleJsonConverter.class)
+    Map<String, Object> switchMetadata
 
     @ManyToOne
     Client client
