@@ -8,7 +8,7 @@ class Amount {
     private int exponent;
     private String currency;
 
-    Float getAmountInDecimal() {
-        return new Float(String.format("%.2f" ,coefficient * Math.pow(10, exponent)));
+    Double getAmountInDecimal() {
+        return new Double(String.format("%.2f" ,coefficient * Math.pow(10, exponent)));
     }
 }

@@ -8,7 +8,7 @@ import java.time.LocalDateTime
 @Data
 class SystemTransaction extends BaseTransaction {
     private FeeType feeType;
-    private String cashbackFundingAccount;
+    private String cashbackFundingAccountRef;
     private String feeAccountRef;
     private String interestAccountRef;
     private String taxAccountRef;
