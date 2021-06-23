@@ -34,9 +34,6 @@ class Transaction {
     Double txnAmountSrc;
     String posEntryMode;
     String cashbackFundingAccountRef;
-    String feeAccountRef;
-    String interestAccountRef;
-    String taxAccountRef;
     Boolean hasExecuted;
     LocalDateTime executeAfter;
     LocalDateTime executedOn;
