@@ -6,14 +6,11 @@ import hyperface.cms.commands.CreateCardRequest
 import hyperface.cms.commands.CreateCreditAccountRequest
 import hyperface.cms.commands.FetchCardTransactionsRequest
 import hyperface.cms.domains.Card
-import hyperface.cms.domains.CreditCardProgram
 import hyperface.cms.domains.CreditAccount
 import hyperface.cms.domains.Customer
 import hyperface.cms.domains.CustomerTxn
 import hyperface.cms.domains.ledger.LedgerEntry
-import hyperface.cms.repository.CardProgramRepository
 import hyperface.cms.repository.CardRepository
-import hyperface.cms.repository.CreditAccountRepository
 import hyperface.cms.repository.CustomerRepository
 import hyperface.cms.repository.CustomerTxnRepository
 import hyperface.cms.repository.LedgerEntryRepository
@@ -32,12 +29,6 @@ public class CustomerController {
 
     @Autowired
     CustomerRepository customerRepository
-
-    @Autowired
-    CreditAccountRepository creditAccountRepository
-
-    @Autowired
-    CardProgramRepository cardProgramRepository
 
     @Autowired
     AccountService accountService
@@ -72,14 +63,9 @@ public class CustomerController {
             consumes = MediaType.APPLICATION_FORM_URLENCODED_VALUE)
     public Card createCard(CreateCardRequest req) {
         println req.dump()
-        Customer customer = customerRepository.findById(req.customerId).get()
-        CreditAccount creditAccount = creditAccountRepository.findById(req.creditAccountId).get()
-        CreditCardProgram cardProgram = cardProgramRepository.findById(req.cardProgramId).get()
 
         // check if a card already exists for this customer under this program
-
-
-        Card card = accountService.createCard(customer, creditAccount, cardProgram)
+        Card card = accountService.createCard(req)
 
         return card
     }

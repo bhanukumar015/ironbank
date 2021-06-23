@@ -20,6 +20,8 @@ class Card implements PaymentInstrument {
     @JoinColumn(name="card_bin_id")
     CardBin cardBin
 
+    String switchCardId
+
     String lastFourDigits
 
     int cardExpiryMonth

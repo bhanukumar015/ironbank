@@ -3,7 +3,7 @@ package hyperface.cms
 class Constants {
 
     enum Currency {
-        INR, USD, EUR, GBP, SGD, AUD
+        INR, USD, EUR, GBP, SGD, AUD, HKD
     }
     enum CardScheme { Visa, Mastercard, Rupay, Diners, Amex }
 

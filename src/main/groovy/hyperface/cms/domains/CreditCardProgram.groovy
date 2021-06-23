@@ -30,6 +30,9 @@ class CreditCardProgram extends HyperfaceProgram {
 
     Integer annualizedPercentageRateInBps
 
+    String cardLogoId
+    String cardPlasticId
+
     @ManyToOne
     CreditCardScheduleOfCharges scheduleOfCharges
 
