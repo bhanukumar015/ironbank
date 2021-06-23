@@ -7,6 +7,7 @@ enum FeeType {
     FOREX_MARKUP,
     JOINING,
     LATE,
+    NOT_APPLICABLE,
     OVERLIMIT,
     REWARDS_REDEMPTION,
     OTHER;
