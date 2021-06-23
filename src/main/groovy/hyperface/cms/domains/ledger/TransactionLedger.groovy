@@ -35,7 +35,7 @@ class TransactionLedger {
     @Enumerated(EnumType.STRING)
     FeeType feeType;
 
-    @ManyToOne(cascade = CascadeType.PERSIST)
+    @ManyToOne
     @JoinColumn(name = "txn_ref_id", referencedColumnName = "id")
     Transaction transaction;
 
