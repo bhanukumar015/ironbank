@@ -42,7 +42,7 @@ class Transaction {
     LocalDateTime executedOn;
 
     @CreationTimestamp
-    LocalDateTime createdOnTimeStamp;
+    LocalDateTime createdOn;
 
     @Enumerated(EnumType.STRING)
     TransactionType transactionType;

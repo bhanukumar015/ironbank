@@ -36,7 +36,7 @@ class TransactionLedger {
     FeeType feeType;
 
     @ManyToOne(cascade = CascadeType.PERSIST)
-    @JoinColumn(name = "txn_ref_number", referencedColumnName = "id")
+    @JoinColumn(name = "txn_ref_id", referencedColumnName = "id")
     Transaction transaction;
 
     String txnDescription;
