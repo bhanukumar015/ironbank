@@ -15,6 +15,6 @@ interface TransactionLedgerRepository extends CrudRepository<TransactionLedger, 
      * @return List of TransactionLedger, for the given txnRefId
      */
     @Query("SELECT tl FROM TransactionLedger tl WHERE tl.transaction.id = :txnRefId")
-    List<TransactionLedger> findAllByTxnRefId(@Param("txnRefId") String txnRefId);
+    List<TransactionLedger> findAllByTxnRefId(@Param("txnRefId") String txnRefId)
 
 }

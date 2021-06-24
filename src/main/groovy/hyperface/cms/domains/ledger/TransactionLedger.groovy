@@ -7,8 +7,14 @@ import hyperface.cms.model.enums.MoneyMovementIndicator
 import hyperface.cms.model.enums.OnUsOffUsIndicator
 import org.hibernate.annotations.GenericGenerator
 
-import javax.persistence.*
-import java.time.LocalDate
+import javax.persistence.Entity
+import javax.persistence.EnumType
+import javax.persistence.Enumerated
+import javax.persistence.GeneratedValue
+import javax.persistence.Id
+import javax.persistence.JoinColumn
+import javax.persistence.ManyToOne
+import java.time.ZonedDateTime
 
 @Entity
 class TransactionLedger {
@@ -18,7 +24,7 @@ class TransactionLedger {
     String id;
 
     String accountNumber;
-    LocalDate postingDate;
+    ZonedDateTime postingDate;
     Double openingBalance;
     Double closingBalance;
     Double transactionAmount;

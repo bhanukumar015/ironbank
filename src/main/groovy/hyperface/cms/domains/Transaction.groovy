@@ -1,64 +1,42 @@
 package hyperface.cms.domains
 
-
-import hyperface.cms.model.enums.*
+import hyperface.cms.model.enums.TransactionSourceIndicator
+import hyperface.cms.model.enums.TransactionType
 import org.hibernate.annotations.CreationTimestamp
 import org.hibernate.annotations.GenericGenerator
 
-import javax.persistence.*
-import java.time.LocalDate
-import java.time.LocalDateTime
+import javax.persistence.Entity
+import javax.persistence.EnumType
+import javax.persistence.Enumerated
+import javax.persistence.GeneratedValue
+import javax.persistence.Id
+import javax.persistence.Inheritance
+import javax.persistence.InheritanceType
+import java.time.ZonedDateTime
 
 @Entity
+@Inheritance(strategy = InheritanceType.JOINED)
 class Transaction {
     @Id
     @GenericGenerator(name = "txn_id", strategy = "hyperface.cms.util.UniqueIdGenerator")
     @GeneratedValue(generator = "txn_id")
-    String id;
+    String id
 
-    String accountNumber;
-    String cardHash;
-    LocalDateTime txnDate;
-    LocalDate txnPostingDate;
-    Double txnAmount;
-    Double pendingTxnAmount;
-    String authCode;
-    String tid;
-    String mid;
-    String mcc;
-    String referenceNumber;
-    String txnDescription;
-    String schemeReferenceId;
-    String merchantCountryCode;
-    String currencyCode;
-    Double txnAmountSrc;
-    String posEntryMode;
-    String cashbackFundingAccountRef;
-    Boolean hasExecuted;
-    LocalDateTime executeAfter;
-    LocalDateTime executedOn;
+    String accountNumber
+    ZonedDateTime txnDate
+    ZonedDateTime txnPostingDate
+    Double transactionAmount
+    String transactionCurrency
+    String referenceNumber
+    String txnDescription
+    String switchReferenceId
 
     @CreationTimestamp
-    LocalDateTime createdOn;
+    ZonedDateTime createdOn
 
     @Enumerated(EnumType.STRING)
-    TransactionType transactionType;
+    TransactionType transactionType
 
     @Enumerated(EnumType.STRING)
-    AuthorizationType authorizationType;
-
-    @Enumerated(EnumType.STRING)
-    OnUsOffUsIndicator onUsOffUsIndicator;
-
-    @Enumerated(EnumType.STRING)
-    SovereigntyIndicator sovereigntyIndicator;
-
-    @Enumerated(EnumType.STRING)
-    FeeType feeType;
-
-    @Enumerated(EnumType.STRING)
-    TransactionStatus txnStatus;
-
-    @Enumerated(EnumType.STRING)
-    TransactionSourceIndicator txnSourceIndicator;
+    TransactionSourceIndicator txnSourceIndicator
 }
