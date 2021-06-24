@@ -11,5 +11,5 @@ class CreateCardRequest {
     // Expiry required only for virtual cards
     String cardExpiry
     // Valid values: Physical, Virtual, VirtualUpgradeToPhysical
-    String cardType
+    Constants.CardType cardType
 }

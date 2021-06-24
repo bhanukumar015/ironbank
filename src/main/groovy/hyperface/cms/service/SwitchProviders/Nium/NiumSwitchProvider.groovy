@@ -70,7 +70,9 @@ class NiumSwitchProvider {
     }
 
     public Map<String, Object> createCard(CreateCardRequest createCardRequest, CreditCardProgram creditCardProgram){
-        Customer customer = customerRepository.findById(createCardRequest.customerId).get()
+        Customer customer = customerRepository.findById(createCardRequest.customerId)
+                .orElseThrow(() -> new IllegalArgumentException("No customer found with customer" +
+                        " id ${createCardRequest.customerId}"))
         String customerHashId = customer.switchMetadata.get('nium.customerHashId')
         String walletId = customer.switchMetadata.get('nium.walletId')
         String endpoint = String.format(createCardEndpoint, customerHashId, walletId)
@@ -105,7 +107,7 @@ class NiumSwitchProvider {
     public String executeHttpPostRequestSync(String endpoint, String requestBody, int retries){
         try{
             String retryResponse = null
-            HttpResponse<JsonNode> response =  Unirest.post(niumUrl + endpoint)
+            HttpResponse<JsonNode> response = Unirest.post(niumUrl + endpoint)
                     .headers(getHeaders())
                     .body(requestBody)
                     .asJson()

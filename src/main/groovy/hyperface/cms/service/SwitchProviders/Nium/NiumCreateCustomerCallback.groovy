@@ -27,13 +27,14 @@ class NiumCreateCustomerCallback implements Callback<JsonNode> {
     int retries
 
     private Logger log = LoggerFactory.getLogger(NiumCreateCustomerCallback.class)
+    private static ObjectMapper objectMapper
 
     @Override
     void completed(HttpResponse<JsonNode> response) {
         if(response.status == 200){
             log.info "POST request with request id ${response.getHeaders().get('x-request-id')} " +
                     "to Nium passed"
-            def metadata = new ObjectMapper().readValue(response.getBody().toString(), new TypeReference<Map<String,Object>>(){})
+            def metadata = objectMapper.readValue(response.getBody().toString(), new TypeReference<Map<String,Object>>(){})
             Map<String, Object> niumMetadata = new HashMap<>()
             niumMetadata.put("nium.customerHashId", metadata.get('customerHashId'))
             niumMetadata.put("nium.walletId", metadata.get('walletHashId'))

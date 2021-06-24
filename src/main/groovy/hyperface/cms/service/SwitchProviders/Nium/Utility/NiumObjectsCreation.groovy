@@ -47,7 +47,7 @@ class NiumObjectsCreation {
             String cardIssuanceAction = "NEW"
             String cardFeeCurrencyCode = creditCardProgram.baseCurrency
             String cardExpiry = cardRequest.cardExpiry
-            String cardType = CardType.fromString(cardRequest.cardType)
+            String cardType = NiumCardType.fromString(cardRequest.cardType.toString())
             String logoId = creditCardProgram.cardLogoId
             String plasticId = creditCardProgram.cardPlasticId
         }
@@ -55,24 +55,24 @@ class NiumObjectsCreation {
     }
 
     // Enums for Nium card creation
-    enum CardType {
+    enum NiumCardType {
         GPR_PHY("Physical"),
         GPR_VIR("Virtual"),
         GPR_VIR_UP2PHY("VirtualUpgradeToPhysical");
 
         private String text;
 
-        CardType(String text) {
+        NiumCardType(String text) {
             this.text = text;
         }
 
-        public static CardType fromString(String text) {
-            for (CardType b : values()) {
+        public static NiumCardType fromString(String text) {
+            for (NiumCardType b : values()) {
                 if (b.text.equalsIgnoreCase(text)) {
                     return b;
                 }
             }
-            throw new InvalidParameterException("Value ${text} not supported for CardTypes");
+            throw new InvalidParameterException("Value ${text} not supported for Nium card types");
         }
     }
 }

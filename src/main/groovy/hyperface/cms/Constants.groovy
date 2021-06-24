@@ -11,6 +11,8 @@ class Constants {
     enum CardHost { Hyperface, Worldline, Euronet, Maximus, Nium } // move to database
     enum CardSwitch { Nium, Maximus, Euronet, Worldline }
 
+    enum CardType { Physical, Virtual, VirtualUpgradeToPhysical}
+
     enum LedgerEntryType { Credit, Debit }
 
     enum RejectionCode {

@@ -22,6 +22,7 @@ import org.mockito.Mock
 import org.mockito.Mockito
 import org.springframework.http.HttpStatus
 import org.junit.jupiter.api.Test
+import static org.junit.jupiter.api.Assertions.*
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 
@@ -108,6 +109,33 @@ class NiumSwitchProviderTests {
 
         CreateCardRequest testCardRequest = this.getTestCreateCardRequest()
         Card testCard = accountService.createCard(testCardRequest)
+
+        // Assert the fields received from Nium switch
+        assertNotNull(testCard.switchCardId)
+        assertEquals(testCard.lastFourDigits, '3456')
+    }
+
+    @Test
+    void testCreateCardSyncException(){
+        accountService.creditAccountRepository = mockCreditAccountRepository
+        Mockito.when(mockCreditAccountRepository.findById(Mockito.any())).thenReturn(this.getMockCreditAccount())
+        accountService.niumSwitchProvider.customerRepository = mockCustomerRepository
+        Mockito.when(mockCustomerRepository.findById(Mockito.any()))
+                .thenReturn(Optional.empty())
+        accountService.cardProgramRepository = mockCardProgramRepository
+        Mockito.when(mockCardProgramRepository.findById(Mockito.any()))
+                .thenReturn(Optional.of(this.getTestCreditCardProgram()))
+        accountService.cardRepository = mockCardRepository
+        Mockito.when(mockCardRepository.save(Mockito.any())).thenReturn(null)
+        Mockito.when(mockCardRepository.findByCreditAccount(Mockito.any())).thenReturn([])
+
+        mockClient.expect(HttpMethod.POST)
+                .thenReturn(mockCreateCardResponse())
+
+        assertThrows(IllegalArgumentException.class, () -> {
+            CreateCardRequest testCardRequest = this.getTestCreateCardRequest()
+            Card testCard = accountService.createCard(testCardRequest)
+        })
     }
 
     //Utility methods to create mock test data
@@ -139,8 +167,7 @@ class NiumSwitchProviderTests {
         cardRequest.cardProgramId = '1'
         cardRequest.customerId = '1'
         cardRequest.creditAccountId = UUID.randomUUID().toString()
-        cardRequest.cardType = 'Physical'
-        println(new ObjectMapper().writeValueAsString(cardRequest))
+        cardRequest.cardType = Constants.CardType.Physical
         return cardRequest
     }
 
@@ -165,7 +192,6 @@ class NiumSwitchProviderTests {
         return Optional.of(mockCreditAccount)
     }
 
-    // TODO: move to test utils? can be used by other tests
     private String getRandomEmailAddress(){
         def length = 16
         def pool = ['a'..'z','A'..'Z',0..9,'.'].flatten()
