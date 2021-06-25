@@ -27,7 +27,7 @@ class NiumCreateCustomerCallback implements Callback<JsonNode> {
     int retries
 
     private Logger log = LoggerFactory.getLogger(NiumCreateCustomerCallback.class)
-    private static ObjectMapper objectMapper
+    private static ObjectMapper objectMapper = new ObjectMapper()
 
     @Override
     void completed(HttpResponse<JsonNode> response) {
