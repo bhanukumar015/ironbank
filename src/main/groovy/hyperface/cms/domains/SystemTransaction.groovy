@@ -12,7 +12,7 @@ import java.time.ZonedDateTime
 class SystemTransaction extends Transaction {
 
     SystemTransaction() {
-        this.setTxnSourceIndicator(TransactionSourceIndicator.S)
+        this.setTxnSourceIndicator(TransactionSourceIndicator.SYSTEM_GENERATED)
     }
 
     Boolean hasExecuted

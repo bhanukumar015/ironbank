@@ -14,11 +14,9 @@ import javax.persistence.Enumerated
 class CustomerTransaction extends Transaction {
 
     CustomerTransaction() {
-        this.setTxnSourceIndicator(TransactionSourceIndicator.C)
+        this.setTxnSourceIndicator(TransactionSourceIndicator.CUSTOMER_INITIATED)
     }
 
-    String accountNumber
-    String cardNumber
     Double pendingTxnAmount
     String authCode
     String tid

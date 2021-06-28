@@ -112,7 +112,7 @@ class TransactionLedgerTest {
         return new CustomerTransaction()
                 .tap {
                     accountNumber = "123456789"
-                    cardNumber = "66rggtr552883jju363yhh3y"
+                    cardId = "66rggtr552883jju363yhh3y"
                     txnDate = ZonedDateTime.now(ZoneId.of("UTC+0530"))
                     txnPostingDate = ZonedDateTime.now(ZoneId.of("UTC+0530")).plusDays(1)
                     transactionAmount = 200.50
@@ -122,7 +122,7 @@ class TransactionLedgerTest {
                     tid = "terminalID1"
                     mid = "merchantId"
                     mcc = "6732"
-                    referenceNumber = UUID.randomUUID()
+                    rootReferenceId = UUID.randomUUID()
                     txnDescription = "Sample Test Transaction"
                     schemeReferenceId = UUID.randomUUID()
                     merchantCountryCode = "01"
@@ -134,7 +134,7 @@ class TransactionLedgerTest {
                     onusOffusIndicator = OnUsOffUsIndicator.ONUS
                     sovereigntyIndicator = SovereigntyIndicator.INTERNATIONAL
                     txnStatus = TransactionStatus.APPROVED
-                    txnSourceIndicator = TransactionSourceIndicator.C
+                    txnSourceIndicator = TransactionSourceIndicator.CUSTOMER_INITIATED
                 }
     }
 
