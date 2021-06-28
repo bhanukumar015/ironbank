@@ -12,6 +12,8 @@ import javax.persistence.GeneratedValue
 import javax.persistence.Id
 import javax.persistence.Inheritance
 import javax.persistence.InheritanceType
+import javax.persistence.JoinColumn
+import javax.persistence.ManyToOne
 import java.time.ZonedDateTime
 
 @Entity
@@ -22,8 +24,14 @@ class Transaction {
     @GeneratedValue(generator = "txn_id")
     String id
 
-    String accountNumber
-    String cardId
+    @ManyToOne
+    @JoinColumn(name = "card_id", referencedColumnName = "id")
+    Card card
+
+    @ManyToOne
+    @JoinColumn(name = "account_id", referencedColumnName = "id")
+    Account account
+
     ZonedDateTime txnDate
     ZonedDateTime txnPostingDate
     Double transactionAmount

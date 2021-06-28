@@ -10,6 +10,8 @@ import hyperface.cms.model.enums.SovereigntyIndicator
 import hyperface.cms.model.enums.TransactionSourceIndicator
 import hyperface.cms.model.enums.TransactionStatus
 import hyperface.cms.model.enums.TransactionType
+import hyperface.cms.repository.CardRepository
+import hyperface.cms.repository.CreditAccountRepository
 import hyperface.cms.repository.CustomerTransactionRepository
 import hyperface.cms.repository.TransactionLedgerRepository
 import org.junit.jupiter.api.Assertions
@@ -31,6 +33,12 @@ class TransactionLedgerTest {
 
     @Autowired
     private CustomerTransactionRepository transactionRepository
+
+    @Autowired
+    private CardRepository cardRepository;
+
+    @Autowired
+    private CreditAccountRepository creditAccountRepository
 
     /**
      * Uncomment and use below to clear tables in DB
@@ -109,10 +117,15 @@ class TransactionLedgerTest {
     }
 
     private CustomerTransaction getDefaultCustomerTransactionEntity() {
+        Card cardNew = new Card()
+        Account accountCredit = new CreditAccount()
+        cardRepository.save(cardNew)
+        creditAccountRepository.save(accountCredit)
+
         return new CustomerTransaction()
                 .tap {
-                    accountNumber = "123456789"
-                    cardId = "66rggtr552883jju363yhh3y"
+                    card = cardNew
+                    account = accountCredit
                     txnDate = ZonedDateTime.now(ZoneId.of("UTC+0530"))
                     txnPostingDate = ZonedDateTime.now(ZoneId.of("UTC+0530")).plusDays(1)
                     transactionAmount = 200.50
