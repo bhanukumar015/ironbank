@@ -22,14 +22,12 @@ class Transaction {
     @GeneratedValue(generator = "txn_id")
     String id
 
-    String accountNumber
     ZonedDateTime txnDate
     ZonedDateTime txnPostingDate
     Double transactionAmount
     String transactionCurrency
     String referenceNumber
     String txnDescription
-    String switchReferenceId
 
     @CreationTimestamp
     ZonedDateTime createdOn

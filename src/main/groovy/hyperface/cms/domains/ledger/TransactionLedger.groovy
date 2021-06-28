@@ -36,7 +36,7 @@ class TransactionLedger {
     LedgerTransactionType transactionType;
 
     @Enumerated(EnumType.STRING)
-    OnUsOffUsIndicator onUsOffUsIndicator;
+    OnUsOffUsIndicator onusOffusIndicator;
 
     @Enumerated(EnumType.STRING)
     FeeType feeType;

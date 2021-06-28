@@ -94,7 +94,7 @@ class TransactionLedgerTest {
             TransactionLedger result = txnLedgerRepository.save(oneTxnLedgerEntity)
             Assertions.assertTrue(txnLedgerRepository.count() == txnLedgerRecordCount + 1)
             ledgerEntryIds.add(result.getId())
-            
+
             // verify manyToOne association
             String txnRefId = oneTxnEntity.getId()
             List<TransactionLedger> listTxnLedger = txnLedgerRepository.findAllByTxnRefId(txnRefId)
@@ -112,7 +112,7 @@ class TransactionLedgerTest {
         return new CustomerTransaction()
                 .tap {
                     accountNumber = "123456789"
-                    cardHash = "66rggtr552883jju363yhh3y"
+                    cardNumber = "66rggtr552883jju363yhh3y"
                     txnDate = ZonedDateTime.now(ZoneId.of("UTC+0530"))
                     txnPostingDate = ZonedDateTime.now(ZoneId.of("UTC+0530")).plusDays(1)
                     transactionAmount = 200.50
@@ -131,7 +131,7 @@ class TransactionLedgerTest {
                     posEntryMode = "05"
                     transactionType = TransactionType.AUTHORIZE
                     authorizationType = AuthorizationType.PURCHASE
-                    onUsOffUsIndicator = OnUsOffUsIndicator.ONUS
+                    onusOffusIndicator = OnUsOffUsIndicator.ONUS
                     sovereigntyIndicator = SovereigntyIndicator.INTERNATIONAL
                     txnStatus = TransactionStatus.APPROVED
                     txnSourceIndicator = TransactionSourceIndicator.C
@@ -147,7 +147,7 @@ class TransactionLedgerTest {
                     closingBalance = 200.5
                     moneyMovementIndicator = MoneyMovementIndicator.DEBIT
                     transactionType = LedgerTransactionType.PURCHASE
-                    onUsOffUsIndicator = OnUsOffUsIndicator.ONUS
+                    onusOffusIndicator = OnUsOffUsIndicator.ONUS
                     feeType = FeeType.ANNUAL
                     transactionAmount = 200.50
                 }

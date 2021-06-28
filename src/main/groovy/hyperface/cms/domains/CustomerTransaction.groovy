@@ -3,6 +3,7 @@ package hyperface.cms.domains
 import hyperface.cms.model.enums.AuthorizationType
 import hyperface.cms.model.enums.OnUsOffUsIndicator
 import hyperface.cms.model.enums.SovereigntyIndicator
+import hyperface.cms.model.enums.TransactionSourceIndicator
 import hyperface.cms.model.enums.TransactionStatus
 
 import javax.persistence.Entity
@@ -12,7 +13,12 @@ import javax.persistence.Enumerated
 @Entity
 class CustomerTransaction extends Transaction {
 
-    String cardHash
+    CustomerTransaction() {
+        this.setTxnSourceIndicator(TransactionSourceIndicator.C)
+    }
+
+    String accountNumber
+    String cardNumber
     Double pendingTxnAmount
     String authCode
     String tid
@@ -23,12 +29,13 @@ class CustomerTransaction extends Transaction {
     Double billingAmount
     String billingCurrency
     String posEntryMode
+    String switchReferenceId
 
     @Enumerated(EnumType.STRING)
     AuthorizationType authorizationType
 
     @Enumerated(EnumType.STRING)
-    OnUsOffUsIndicator onUsOffUsIndicator
+    OnUsOffUsIndicator onusOffusIndicator
 
     @Enumerated(EnumType.STRING)
     SovereigntyIndicator sovereigntyIndicator
