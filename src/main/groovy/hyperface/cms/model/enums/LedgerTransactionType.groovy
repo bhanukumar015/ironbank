@@ -1,0 +1,23 @@
+package hyperface.cms.model.enums
+
+enum LedgerTransactionType {
+    CASHBACK,
+    CASHBACK_REVERSAL,
+    CASH_WITHDRAWAL,
+    CASH_WITHDRAWAL_REFUND,
+    EMI,
+    FEE,
+    FEE_REVERSAL,
+    INTEREST,
+    INTEREST_REVERSAL,
+    PAYMENT,
+    PAYMENT_REVERSAL,
+    REFUND,
+    REPAYMENT,
+    REPAYMENT_REVERSAL,
+    SURCHARGE,
+    SURCHARGE_REVERSAL,
+    TAX,
+    TAX_REVERSAL,
+    PURCHASE;
+}
