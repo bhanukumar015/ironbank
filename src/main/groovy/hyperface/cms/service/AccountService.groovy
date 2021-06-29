@@ -9,7 +9,7 @@ import hyperface.cms.domains.Customer
 import hyperface.cms.repository.CardProgramRepository
 import hyperface.cms.repository.CardRepository
 import hyperface.cms.repository.CreditAccountRepository
-import hyperface.cms.service.SwitchProviders.Nium.NiumSwitchProvider
+import hyperface.cms.service.SwitchProviders.Nium.CardManagement.NiumCardService
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Service
 
@@ -26,7 +26,7 @@ class AccountService {
     CreditAccountRepository creditAccountRepository
 
     @Autowired
-    NiumSwitchProvider niumSwitchProvider
+    NiumCardService niumCardService
 
     public CreditAccount createCreditAccount(Customer customer, Constants.Currency currency, Double approvedCreditLimit) {
         CreditAccount creditAccount = new CreditAccount()
@@ -56,7 +56,7 @@ class AccountService {
             return existingOnes.get(0)
         }
 
-        def switchCardMetadata = niumSwitchProvider.createCard(cardRequest, cardProgram)
+        def switchCardMetadata = niumCardService.createCard(cardRequest, cardProgram)
 
         Card card = new Card()
         card.creditAccount = creditAccount
