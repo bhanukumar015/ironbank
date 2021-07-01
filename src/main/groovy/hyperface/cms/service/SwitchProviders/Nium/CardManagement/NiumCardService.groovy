@@ -22,7 +22,7 @@ class NiumCardService {
     NiumSwitchProvider niumSwitchProvider
 
     @Autowired
-    NiumAddCardCallback addCardCallback
+    NiumCreateCardCallback createCardCallback
 
     @Autowired
     NiumObjectsCreation niumObjectsCreation
@@ -39,19 +39,13 @@ class NiumCardService {
         String customerHashId = customer.switchMetadata.get('nium.customerHashId')
         String walletId = customer.switchMetadata.get('nium.walletId')
         String endpoint = String.format(createCardEndpoint, customerHashId, walletId)
-        try{
-            String requestBody = niumObjectsCreation.createNiumRequestCard(createCardRequest, creditCardProgram)
-            String response = niumSwitchProvider.executeHttpPostRequestSync(endpoint, requestBody, MAX_RETRIES)
-            def metadata = objectMapper.readValue(response, new TypeReference<Map<String,Object>>(){})
-            Map<String, Object> niumCardMetadata = new HashMap<>()
-            niumCardMetadata.put("switchCardId", metadata.get('cardHashId'))
-            niumCardMetadata.put("maskedCardNumber", metadata.get('maskedCardNumber'))
-            return niumCardMetadata
-        }
-        catch(Exception ex){
-            throw new Exception("Card creation request for customerId ${createCardRequest.customerId} " +
-                    "with Nium failed with message: ${ex.message}")
-        }
+        String requestBody = niumObjectsCreation.createNiumRequestCard(createCardRequest, creditCardProgram)
+        String response = niumSwitchProvider.executeHttpPostRequestSync(endpoint, requestBody, MAX_RETRIES)
+        def metadata = objectMapper.readValue(response, new TypeReference<Map<String,Object>>(){})
+        Map<String, Object> niumCardMetadata = new HashMap<>()
+        niumCardMetadata.put("switchCardId", metadata.get('cardHashId'))
+        niumCardMetadata.put("maskedCardNumber", metadata.get('maskedCardNumber'))
+        return niumCardMetadata
     }
 
     public HttpStatus createCardAsync(CreateCardRequest createCardRequest, CreditCardProgram creditCardProgram){
@@ -62,11 +56,11 @@ class NiumCardService {
         String walletId = customer.switchMetadata.get('nium.walletId')
         String endpoint = String.format(createCardEndpoint, customerHashId, walletId)
         String requestBody = niumObjectsCreation.createNiumRequestCard(createCardRequest, creditCardProgram)
-        addCardCallback.retries = MAX_RETRIES
-        addCardCallback.cardRequest = createCardRequest
-        addCardCallback.cardProgram = creditCardProgram
-        addCardCallback.endpoint = endpoint
-        niumSwitchProvider.executeHttpPostRequestAsync(endpoint, requestBody, addCardCallback)
+        createCardCallback.retries = MAX_RETRIES
+        createCardCallback.cardRequest = createCardRequest
+        createCardCallback.cardProgram = creditCardProgram
+        createCardCallback.endpoint = endpoint
+        niumSwitchProvider.executeHttpPostRequestAsync(endpoint, requestBody, createCardCallback)
         // TODO: send appropriate response
         return HttpStatus.OK
     }

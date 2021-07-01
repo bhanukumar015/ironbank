@@ -21,7 +21,7 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Component
 
 @Component
-class NiumAddCardCallback implements Callback<JsonNode>{
+class NiumCreateCardCallback implements Callback<JsonNode>{
 
     @Autowired
     NiumSwitchProvider niumSwitchProvider
@@ -43,7 +43,7 @@ class NiumAddCardCallback implements Callback<JsonNode>{
     String endpoint
     int retries
 
-    private Logger log = LoggerFactory.getLogger(NiumAddCardCallback.class)
+    private Logger log = LoggerFactory.getLogger(NiumCreateCardCallback.class)
     private static ObjectMapper objectMapper = new ObjectMapper()
 
     @Override

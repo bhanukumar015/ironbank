@@ -1,7 +1,6 @@
 package hyperface.cms.service.SwitchProviders.Nium
 
 import hyperface.cms.repository.CustomerRepository
-import hyperface.cms.service.SwitchProviders.Nium.CardManagement.NiumAddCardCallback
 import hyperface.cms.service.SwitchProviders.Nium.CustomerManagement.NiumCreateCustomerCallback
 import hyperface.cms.service.SwitchProviders.Nium.Utility.NiumObjectsCreation
 import kong.unirest.Callback
@@ -19,9 +18,6 @@ class NiumSwitchProvider {
 
     @Autowired
     NiumCreateCustomerCallback createCustomerCallback
-
-    @Autowired
-    NiumAddCardCallback addCardCallback
 
     @Autowired
     CustomerRepository customerRepository

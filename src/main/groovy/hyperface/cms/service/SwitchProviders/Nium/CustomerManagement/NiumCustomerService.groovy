@@ -28,19 +28,13 @@ class NiumCustomerService {
 
     public HttpStatus createCustomer(Customer customer){
         String requestBody = NiumObjectsCreation.createNiumRequestCustomer(customer)
-        try{
-            String response = niumSwitchProvider.executeHttpPostRequestSync(createCustomerEndpoint, requestBody, MAX_RETRIES)
-            def metadata = objectMapper.readValue(response, new TypeReference<Map<String,Object>>(){})
-            Map<String, Object> niumCustomerMetadata = new HashMap<>()
-            niumCustomerMetadata.put("nium.customerHashId", metadata.get('customerHashId'))
-            niumCustomerMetadata.put("nium.walletId", metadata.get('walletHashId'))
-            customer.switchMetadata = niumCustomerMetadata
-            customerRepository.save(customer)
-        }
-        catch (Exception ex)
-        {
-            throw new Exception("Customer creation request with Nium failed with message: ${ex.message}")
-        }
+        String response = niumSwitchProvider.executeHttpPostRequestSync(createCustomerEndpoint, requestBody, MAX_RETRIES)
+        def metadata = objectMapper.readValue(response, new TypeReference<Map<String,Object>>(){})
+        Map<String, Object> niumCustomerMetadata = new HashMap<>()
+        niumCustomerMetadata.put("nium.customerHashId", metadata.get('customerHashId'))
+        niumCustomerMetadata.put("nium.walletId", metadata.get('walletHashId'))
+        customer.switchMetadata = niumCustomerMetadata
+        customerRepository.save(customer)
         // TODO: send appropriate response
         return HttpStatus.OK
     }

@@ -10,7 +10,7 @@ import hyperface.cms.repository.CardRepository
 import hyperface.cms.repository.CreditAccountRepository
 import hyperface.cms.repository.CustomerRepository
 import hyperface.cms.service.AccountService
-import hyperface.cms.service.SwitchProviders.Nium.CardManagement.NiumAddCardCallback
+import hyperface.cms.service.SwitchProviders.Nium.CardManagement.NiumCreateCardCallback
 import hyperface.cms.service.SwitchProviders.Nium.CardManagement.NiumCardService
 import hyperface.cms.service.SwitchProviders.Nium.CustomerManagement.NiumCreateCustomerCallback
 import hyperface.cms.service.SwitchProviders.Nium.CustomerManagement.NiumCustomerService
@@ -75,7 +75,7 @@ class NiumSwitchProviderTests {
     AccountService accountService
 
     @Autowired
-    NiumAddCardCallback addCardCallback
+    NiumCreateCardCallback createCardCallback
 
     @Autowired
     NiumCreateCustomerCallback createCustomerCallback
@@ -159,16 +159,16 @@ class NiumSwitchProviderTests {
 
     @Test
     void testCreateCardAsync(){
-        addCardCallback.cardRepository = mockCardRepository
+        createCardCallback.cardRepository = mockCardRepository
         Mockito.when(mockCardRepository.save(Mockito.any())).thenReturn(null)
-        addCardCallback.creditAccountRepository = mockCreditAccountRepository
+        createCardCallback.creditAccountRepository = mockCreditAccountRepository
         Mockito.when(mockCreditAccountRepository.findById(Mockito.any())).thenReturn(mockObject.getMockCreditAccount())
         niumCardService.customerRepository = mockCustomerRepository
         Mockito.when(mockCustomerRepository.findById(Mockito.any()))
                 .thenReturn(Optional.of(mockObject.getTestCustomer()))
         niumCardService.niumSwitchProvider = mockNiumSwitchProvider
         Mockito.when(mockNiumSwitchProvider.executeHttpPostRequestAsync(Mockito.any(), Mockito.any(), Mockito.any()))
-                .thenAnswer{(addCardCallback)
+                .thenAnswer{(createCardCallback)
                         .completed(mockObject.mockAddCardResponseAsync())}
 
         HttpStatus responseStatus = niumCardService.createCardAsync(mockObject.getTestCreateCardRequest()
@@ -178,9 +178,9 @@ class NiumSwitchProviderTests {
 
     @Test
     void testCreateCardAsyncRetriesExhausted(){
-        addCardCallback.cardRepository = mockCardRepository
+        createCardCallback.cardRepository = mockCardRepository
         Mockito.when(mockCardRepository.save(Mockito.any())).thenReturn(null)
-        addCardCallback.creditAccountRepository = mockCreditAccountRepository
+        createCardCallback.creditAccountRepository = mockCreditAccountRepository
         Mockito.when(mockCreditAccountRepository.findById(Mockito.any())).thenReturn(mockObject.getMockCreditAccount())
         niumCardService.customerRepository = mockCustomerRepository
         Mockito.when(mockCustomerRepository.findById(Mockito.any()))
@@ -188,8 +188,8 @@ class NiumSwitchProviderTests {
         niumCardService.niumSwitchProvider = mockNiumSwitchProvider
         Mockito.when(mockNiumSwitchProvider.executeHttpPostRequestAsync(Mockito.any(), Mockito.any(), Mockito.any()))
                 .thenAnswer{
-                    addCardCallback.retries = 0
-                    (addCardCallback)
+                    createCardCallback.retries = 0
+                    (createCardCallback)
                         .failed(new UnirestException(""))}
 
         assertThrows(Exception.class, () -> {
