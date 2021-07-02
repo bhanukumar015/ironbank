@@ -1,28 +1,20 @@
 package hyperface.cms.domains.batch
 
-import javax.persistence.Embeddable
-import javax.persistence.EmbeddedId
+import org.hibernate.annotations.GenericGenerator
+
 import javax.persistence.Entity
+import javax.persistence.GeneratedValue
+import javax.persistence.Id
 
 @Entity
 class CurrencyConversion {
+    @Id
+    @GenericGenerator(name = "currency_conversion_id", strategy = "hyperface.cms.util.UniqueIdGenerator")
+    @GeneratedValue(generator = "currency_conversion_id")
+    String id
 
-    @EmbeddedId
-    CurrencyPair currencyPair
-
+    String sourceCurrency
+    String destinationCurrency
     Double conversionRate
 
-    @Embeddable
-    static class CurrencyPair implements Serializable {
-        String sourceCurrency
-        String destinationCurrency
-
-        CurrencyPair() {
-        }
-
-        CurrencyPair(String sourceCurrency, String destinationCurrency) {
-            this.sourceCurrency = sourceCurrency
-            this.destinationCurrency = destinationCurrency
-        }
-    }
 }

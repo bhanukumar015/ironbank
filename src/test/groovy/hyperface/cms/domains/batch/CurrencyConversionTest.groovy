@@ -26,20 +26,21 @@ class CurrencyConversionTest {
     void insertionTest() {
         CurrencyConversion currencyConversion = new CurrencyConversion();
         currencyConversion.tap {
-            currencyPair = new CurrencyConversion.CurrencyPair("USD", "INR")
+            sourceCurrency = "USD"
+            destinationCurrency = "INR"
             conversionRate = 75.58
         }
         CurrencyConversion result = conversionRepository.save(currencyConversion)
-        Assertions.assertTrue(result.currencyPair.getSourceCurrency() == "USD")
-        Assertions.assertTrue(result.currencyPair.getDestinationCurrency() == "INR")
+        Assertions.assertTrue(result.getSourceCurrency() == "USD")
+        Assertions.assertTrue(result.getDestinationCurrency() == "INR")
         Assertions.assertTrue(result.getConversionRate() == 75.58)
 
         currencyConversion.tap {
             conversionRate = 78.58
         }
         result = conversionRepository.save(currencyConversion)
-        Assertions.assertTrue(result.currencyPair.getSourceCurrency() == "USD")
-        Assertions.assertTrue(result.currencyPair.getDestinationCurrency() == "INR")
+        Assertions.assertTrue(result.getSourceCurrency() == "USD")
+        Assertions.assertTrue(result.getDestinationCurrency() == "INR")
         Assertions.assertTrue(result.getConversionRate() == 78.58)
     }
 
@@ -48,7 +49,8 @@ class CurrencyConversionTest {
     void retrievalWithUpdateTest() {
         CurrencyConversion currencyConversion = new CurrencyConversion();
         currencyConversion.tap {
-            currencyPair = new CurrencyConversion.CurrencyPair("EUR", "INR")
+            sourceCurrency = "EUR"
+            destinationCurrency = "INR"
             conversionRate = 105.58
         }
         conversionRepository.save(currencyConversion)
@@ -56,9 +58,9 @@ class CurrencyConversionTest {
         currencyConversion.tap {
             conversionRate = 95.58
         }
-        conversionRepository.save(currencyConversion)
+        CurrencyConversion savedCC = conversionRepository.save(currencyConversion)
 
-        Optional<CurrencyConversion> result = conversionRepository.findById(new CurrencyConversion.CurrencyPair("EUR", "INR"))
+        Optional<CurrencyConversion> result = conversionRepository.findById(savedCC.getId())
         Assertions.assertTrue(result.isPresent())
         Assertions.assertTrue(result.get().getConversionRate() == 95.58)
     }

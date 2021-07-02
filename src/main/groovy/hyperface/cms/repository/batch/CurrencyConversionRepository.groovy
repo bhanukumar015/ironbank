@@ -7,6 +7,6 @@ import org.springframework.data.repository.CrudRepository
 import org.springframework.stereotype.Repository
 
 @Repository
-interface CurrencyConversionRepository extends CrudRepository<CurrencyConversion, CurrencyConversion.CurrencyPair> {
+interface CurrencyConversionRepository extends CrudRepository<CurrencyConversion, String> {
 
 }
