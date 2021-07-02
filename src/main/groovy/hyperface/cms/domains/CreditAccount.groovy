@@ -1,16 +1,17 @@
 package hyperface.cms.domains
 
-import hyperface.cms.Constants
+
+import hyperface.cms.model.enums.RepaymentIndicator
 import org.hibernate.annotations.GenericGenerator
 
 import javax.persistence.Entity
+import javax.persistence.EnumType
+import javax.persistence.Enumerated
 import javax.persistence.GeneratedValue
-import javax.persistence.GenerationType
 import javax.persistence.Id
-import javax.persistence.Inheritance
-import javax.persistence.InheritanceType
 import javax.persistence.JoinColumn
 import javax.persistence.ManyToOne
+import java.time.ZonedDateTime
 
 @Entity
 class CreditAccount extends Account {
@@ -19,15 +20,23 @@ class CreditAccount extends Account {
     @GeneratedValue(generator = "credit_account_id")
     String id
 
-    Constants.Currency defaultCurrency
+    String defaultCurrency
     Double approvedCreditLimit
     Double availableCreditLimit
-
     Boolean allowTxnLog = true
     Date lastTxnDate
+    ZonedDateTime currentBillingStartDate
+    ZonedDateTime currentBillingEndDate
+    Integer currentBillingCycle
+
+    @Enumerated(EnumType.STRING)
+    RepaymentIndicator currentCycleRepaymentIndicator
+
+    @Enumerated(EnumType.STRING)
+    RepaymentIndicator previousCycleRepaymentIndicator
 
     @ManyToOne
-    @JoinColumn(name="customer_id")
+    @JoinColumn(name = "customer_id")
     Customer customer
 
 }

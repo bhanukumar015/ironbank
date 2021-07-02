@@ -12,6 +12,11 @@ import javax.persistence.GeneratedValue
 import javax.persistence.Id
 import javax.persistence.ManyToOne
 
+/**
+ *
+ * @deprecated use {@link hyperface.cms.domains.CustomerTransaction} instead.
+ */
+@Deprecated(forRemoval = true)
 @Entity
 class CustomerTxn {
     @Id
@@ -19,7 +24,9 @@ class CustomerTxn {
     @GeneratedValue(generator = "customer_txn_id")
     String id
 
-    enum Channel { MagStripe, Chip_And_Pin, NFC, Online, Other, NotApplicable }
+    enum Channel {
+        MagStripe, Chip_And_Pin, NFC, Online, Other, NotApplicable
+    }
 
     // incoming parameters
     boolean fullyAuthenticated = false
