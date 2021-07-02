@@ -1,6 +1,5 @@
 package hyperface.cms.domains.batch
 
-
 import javax.persistence.Entity
 import javax.persistence.EnumType
 import javax.persistence.Enumerated
@@ -11,11 +10,21 @@ import java.time.ZonedDateTime
 class BatchMetadata {
     @Id
     @Enumerated(EnumType.STRING)
-    BatchName batchName
+    BatchMetadata.BatchName batchName
 
     @Enumerated(EnumType.STRING)
-    Source source
+    BatchMetadata.Source source
 
     ZonedDateTime lastUpdated
 
+    static enum BatchName {
+        CURRENCY_CONVERSION;
+    }
+
+    static enum Source {
+        VISA,
+        NIUM;
+    }
+
 }
+
