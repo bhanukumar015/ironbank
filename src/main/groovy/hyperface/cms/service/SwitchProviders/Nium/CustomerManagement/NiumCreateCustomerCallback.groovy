@@ -1,9 +1,10 @@
-package hyperface.cms.service.SwitchProviders.Nium
+package hyperface.cms.service.SwitchProviders.Nium.CustomerManagement
 
 import com.fasterxml.jackson.core.type.TypeReference
 import com.fasterxml.jackson.databind.ObjectMapper
 import hyperface.cms.domains.Customer
 import hyperface.cms.repository.CustomerRepository
+import hyperface.cms.service.SwitchProviders.Nium.NiumSwitchProvider
 import hyperface.cms.service.SwitchProviders.Nium.Utility.NiumObjectsCreation
 import kong.unirest.Callback
 import kong.unirest.HttpResponse
@@ -23,7 +24,11 @@ class NiumCreateCustomerCallback implements Callback<JsonNode> {
     @Autowired
     NiumSwitchProvider niumSwitchProvider
 
+    @Autowired
+    NiumCustomerService niumCustomerService
+
     Customer customer
+    String endpoint
     int retries
 
     private Logger log = LoggerFactory.getLogger(NiumCreateCustomerCallback.class)
@@ -47,11 +52,11 @@ class NiumCreateCustomerCallback implements Callback<JsonNode> {
             log.info "Request to Nium failed with status code ${response.status}. Retrying..."
             String requestBody = NiumObjectsCreation.createNiumRequestCustomer(customer)
             this.retries -= 1
-            niumSwitchProvider.executeHttpPostRequestAsync(NiumSwitchProvider.createCustomerEndpoint, requestBody, this)
+            niumSwitchProvider.executeHttpPostRequestAsync(endpoint, requestBody, this)
         }
         else{
             log.info "Request to Nium failed with status code ${response.status}"
-            log.info "Retries exhausted. Request failed!"
+            throw new Exception("Retries exhausted. Request failed!")
         }
     }
 
@@ -61,10 +66,10 @@ class NiumCreateCustomerCallback implements Callback<JsonNode> {
             log.info "Request to Nium failed with message ${e.message}. Retrying..."
             String requestBody = NiumObjectsCreation.createNiumRequestCustomer(customer)
             this.retries -= 1
-            niumSwitchProvider.executeHttpPostRequestAsync(NiumSwitchProvider.createCustomerEndpoint, requestBody, this)
+            niumSwitchProvider.executeHttpPostRequestAsync(endpoint, requestBody, this)
         }
         else{
-            throw new Exception("Request failed with message ${e.message}")
+            throw new Exception("Retries exhausted. Request to create customer failed with message ${e.message}")
         }
     }
 
