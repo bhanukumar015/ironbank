@@ -1,11 +1,7 @@
 package hyperface.cms.service.SwitchProviders.Nium
 
-import com.fasterxml.jackson.core.type.TypeReference
-import com.fasterxml.jackson.databind.ObjectMapper
-import hyperface.cms.commands.CreateCardRequest
-import hyperface.cms.domains.CreditCardProgram
-import hyperface.cms.domains.Customer
 import hyperface.cms.repository.CustomerRepository
+import hyperface.cms.service.SwitchProviders.Nium.CustomerManagement.NiumCreateCustomerCallback
 import hyperface.cms.service.SwitchProviders.Nium.Utility.NiumObjectsCreation
 import kong.unirest.Callback
 import kong.unirest.HttpResponse
@@ -15,7 +11,6 @@ import kong.unirest.UnirestException
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
 
 @Service
@@ -33,63 +28,9 @@ class NiumSwitchProvider {
     // TODO: remove hardcoding from code. Read from config file?
     private static final String apiKey = 'LnqHbp0r0S4rBQE53FHWW8k1nIHgfRQb4iJk1glR'
     private static final String clientName = 'Hyperface'
-    private static final int MAX_RETRIES = 3
-    private static ObjectMapper objectMapper = new ObjectMapper()
     private Logger log = LoggerFactory.getLogger(NiumSwitchProvider.class)
 
     public static final String niumUrl = 'http://niumproxy.hyperface.in/api/v1/client/c8fbf2b7-1b3e-47a6-9ce2-86539d05d956/'
-    public static final String createCustomerEndpoint = 'customer'
-    public static final String createCardEndpoint = "customer/%s/wallet/%s/card"
-
-    public HttpStatus createCustomer(Customer customer){
-        String requestBody = NiumObjectsCreation.createNiumRequestCustomer(customer)
-        try{
-            String response = executeHttpPostRequestSync(createCustomerEndpoint, requestBody, MAX_RETRIES)
-            def metadata = objectMapper.readValue(response, new TypeReference<Map<String,Object>>(){})
-            Map<String, Object> niumCustomerMetadata = new HashMap<>()
-            niumCustomerMetadata.put("nium.customerHashId", metadata.get('customerHashId'))
-            niumCustomerMetadata.put("nium.walletId", metadata.get('walletHashId'))
-            customer.switchMetadata = niumCustomerMetadata
-            customerRepository.save(customer)
-        }
-        catch (Exception ex)
-        {
-            throw new Exception("Customer creation request with Nium failed with message: ${ex.message}")
-        }
-        // TODO: send appropriate response
-        return HttpStatus.OK
-    }
-
-    public HttpStatus createCustomerAsync(Customer customer){
-        String requestBody = NiumObjectsCreation.createNiumRequestCustomer(customer)
-        createCustomerCallback.customer = customer
-        createCustomerCallback.retries = MAX_RETRIES
-        executeHttpPostRequestAsync(createCustomerEndpoint, requestBody, createCustomerCallback)
-        // TODO: send appropriate response
-        return HttpStatus.OK
-    }
-
-    public Map<String, Object> createCard(CreateCardRequest createCardRequest, CreditCardProgram creditCardProgram){
-        Customer customer = customerRepository.findById(createCardRequest.customerId)
-                .orElseThrow(() -> new IllegalArgumentException("No customer found with customer" +
-                        " id ${createCardRequest.customerId}"))
-        String customerHashId = customer.switchMetadata.get('nium.customerHashId')
-        String walletId = customer.switchMetadata.get('nium.walletId')
-        String endpoint = String.format(createCardEndpoint, customerHashId, walletId)
-        try{
-            String requestBody = niumObjectsCreation.createNiumRequestCard(createCardRequest, creditCardProgram)
-            String response = executeHttpPostRequestSync(endpoint, requestBody, MAX_RETRIES)
-            def metadata = objectMapper.readValue(response, new TypeReference<Map<String,Object>>(){})
-            Map<String, Object> niumCardMetadata = new HashMap<>()
-            niumCardMetadata.put("switchCardId", metadata.get('cardHashId'))
-            niumCardMetadata.put("maskedCardNumber", metadata.get('maskedCardNumber'))
-            return niumCardMetadata
-        }
-        catch(Exception ex){
-            throw new Exception("Card creation request for customerId ${createCardRequest.customerId} " +
-                    "with Nium failed with message: ${ex.message}")
-        }
-    }
 
     public void executeHttpPostRequestAsync(String endpoint, String requestBody, Callback<JsonNode> callback){
         try{
