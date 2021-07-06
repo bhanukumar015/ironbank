@@ -28,6 +28,10 @@ class CreditAccount extends Account {
     ZonedDateTime currentBillingStartDate
     ZonedDateTime currentBillingEndDate
     Integer currentBillingCycle
+    String lastStatementId
+    ZonedDateTime lastStatementDueDate
+    ZonedDateTime lastStatementGeneratedOn
+
 
     @Enumerated(EnumType.STRING)
     RepaymentIndicator currentCycleRepaymentIndicator
