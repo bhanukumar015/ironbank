@@ -1,6 +1,7 @@
 package hyperface.cms.service.SwitchProviders.Nium.Utility
 
 import com.fasterxml.jackson.databind.ObjectMapper
+import hyperface.cms.commands.CardBlockActionRequest
 import hyperface.cms.commands.CreateCardRequest
 import hyperface.cms.domains.CreditCardProgram
 import hyperface.cms.domains.Customer
@@ -52,6 +53,14 @@ class NiumObjectsCreation {
             String plasticId = creditCardProgram.cardPlasticId
         }
         return objectMapper.writeValueAsString(niumCard)
+    }
+
+    public String createCardActionRequest(CardBlockActionRequest cardBlockActionRequest){
+        Object cardAction = new Object(){
+            String reason = cardBlockActionRequest.reason
+            String blockAction = cardBlockActionRequest.blockAction
+        }
+        return objectMapper.writeValueAsString(cardAction)
     }
 
     // Enums for Nium card creation

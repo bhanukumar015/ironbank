@@ -35,14 +35,16 @@ class Card implements PaymentInstrument {
 
     Boolean cardSuspendedByCustomer = false
     Boolean enableOverseasTransactions = false
-    Boolean enableDomesticTransactions = false
+    Boolean enableOfflineTransactions = false
     Boolean enableNFC = false
     Boolean enableOnlineTransactions = false
     Boolean enableCashWithdrawal = false
+    Boolean enableMagStripe = false
 
     Double dailyCashWithdrawalLimit
     Double dailyTransactionLimit
 
+    Boolean isLocked = false
     Boolean hotlisted = false
 
     @ManyToOne

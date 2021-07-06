@@ -1,8 +1,10 @@
 package hyperface.cms.SwitchProvidersTests.Utility
 
 import hyperface.cms.Constants
+import hyperface.cms.commands.CardChannelControlsRequest
 import hyperface.cms.commands.CreateCardRequest
 import hyperface.cms.domains.Address
+import hyperface.cms.domains.Card
 import hyperface.cms.domains.CreditAccount
 import hyperface.cms.domains.CreditCardProgram
 import hyperface.cms.domains.Customer
@@ -64,13 +66,37 @@ class MockObjects {
         return creditCardProgram
     }
 
-    public Optional<CreditAccount> getMockCreditAccount(){
+    public CreditAccount getTestCreditAccount(){
         CreditAccount mockCreditAccount = new CreditAccount()
         mockCreditAccount.id = '1'
         mockCreditAccount.defaultCurrency = Constants.Currency.HKD
         mockCreditAccount.approvedCreditLimit = 10000
         mockCreditAccount.availableCreditLimit = 10000
-        return Optional.of(mockCreditAccount)
+        mockCreditAccount.customer = this.getTestCustomer()
+        return mockCreditAccount
+    }
+
+    public Card getTestCard(){
+        Card card = new Card().tap {
+            id = UUID.randomUUID().toString()
+            cardExpiryMonth = 10
+            cardExpiryYear = 2030
+            switchCardId = UUID.randomUUID().toString()
+            lastFourDigits = UUID.randomUUID().toString()
+            physicallyIssued = true
+            virtuallyIssued = true
+            virtualCardActivatedByCustomer = false
+            physicalCardActivatedByCustomer = false
+            cardSuspendedByCustomer = false
+            enableOverseasTransactions = false
+            enableOfflineTransactions = false
+            enableNFC = false
+            enableOnlineTransactions = false
+            enableCashWithdrawal = false
+            enableMagStripe = false
+            creditAccount = this.getTestCreditAccount()
+        }
+        return card
     }
 
     private String getRandomEmailAddress(){
@@ -233,6 +259,18 @@ class MockObjects {
             JsonNode mapBody(Function func) {
                 return null
             }
+        }
+    }
+
+    public CardChannelControlsRequest getTestCardControlsRequest(){
+        return new CardChannelControlsRequest().tap{
+            cardId = UUID.randomUUID().toString()
+            enableMagStripe = false
+            enableOfflineTransactions = true
+            enableNFC = false
+            enableCashWithdrawl = false
+            enableOverseasTransactions = true
+            enableOnlineTransactions = true
         }
     }
 }
