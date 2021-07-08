@@ -40,4 +40,6 @@ class CardStatement {
     Double refunds
     Double netCashback
     Double netPurchases
+    Integer billingCycleNumber
+    ZonedDateTime generatedOn
 }
