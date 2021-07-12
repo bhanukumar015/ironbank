@@ -1,6 +1,7 @@
 package hyperface.cms.domains
 
 import hyperface.cms.Constants
+import hyperface.cms.domains.rewards.Offer
 import org.hibernate.annotations.GenericGenerator
 
 import javax.persistence.Entity
@@ -9,6 +10,7 @@ import javax.persistence.Enumerated
 import javax.persistence.GeneratedValue
 import javax.persistence.Id
 import javax.persistence.ManyToOne
+import javax.persistence.OneToMany
 
 @Entity
 class CreditCardProgram extends HyperfaceProgram {
@@ -44,5 +46,8 @@ class CreditCardProgram extends HyperfaceProgram {
 
     @ManyToOne
     Client client
+
+    @OneToMany(mappedBy = "creditCardProgram")
+    List<Offer> offers
 
 }

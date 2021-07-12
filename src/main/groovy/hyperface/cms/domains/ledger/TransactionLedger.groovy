@@ -21,29 +21,29 @@ class TransactionLedger {
     @Id
     @GenericGenerator(name = "ledger_entry_id", strategy = "hyperface.cms.util.UniqueIdGenerator")
     @GeneratedValue(generator = "ledger_entry_id")
-    String id;
+    String id
 
-    String accountNumber;
-    ZonedDateTime postingDate;
-    Double openingBalance;
-    Double closingBalance;
-    Double transactionAmount;
-
-    @Enumerated(EnumType.STRING)
-    MoneyMovementIndicator moneyMovementIndicator;
+    String accountNumber
+    ZonedDateTime postingDate
+    Double openingBalance
+    Double closingBalance
+    Double transactionAmount
 
     @Enumerated(EnumType.STRING)
-    LedgerTransactionType transactionType;
+    MoneyMovementIndicator moneyMovementIndicator
 
     @Enumerated(EnumType.STRING)
-    OnUsOffUsIndicator onusOffusIndicator;
+    LedgerTransactionType transactionType
 
     @Enumerated(EnumType.STRING)
-    FeeType feeType;
+    OnUsOffUsIndicator onusOffusIndicator
+
+    @Enumerated(EnumType.STRING)
+    FeeType feeType
 
     @ManyToOne
     @JoinColumn(name = "txn_ref_id", referencedColumnName = "id")
-    Transaction transaction;
+    Transaction transaction
 
-    String txnDescription;
+    String txnDescription
 }
