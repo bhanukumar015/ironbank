@@ -126,6 +126,10 @@ class NiumSwitchProviderTests {
                 .thenReturn(Optional.of(mockObject.getTestCreditCardProgram()))
         cardService.cardRepository = mockCardRepository
         Mockito.when(mockCardRepository.save(Mockito.any())).thenReturn(null)
+        niumCardService.niumSwitchProvider = mockNiumSwitchProvider
+        Mockito.when(mockNiumSwitchProvider.executeHttpPostRequestSync(Mockito.anyString()
+                , Mockito.anyString(), Mockito.anyInt()))
+                .thenReturn(mockObject.mockCreateCardResponse())
 
         mockClient.expect(HttpMethod.POST)
                 .thenReturn(mockObject.mockCreateCardResponse())
@@ -173,7 +177,8 @@ class NiumSwitchProviderTests {
         Mockito.when(mockCustomerRepository.findById(Mockito.any()))
                 .thenReturn(Optional.of(mockObject.getTestCustomer()))
         niumCardService.niumSwitchProvider = mockNiumSwitchProvider
-        Mockito.when(mockNiumSwitchProvider.executeHttpPostRequestAsync(Mockito.any(), Mockito.any(), Mockito.any()))
+        Mockito.when(mockNiumSwitchProvider.executeHttpPostRequestAsync(Mockito.any()
+                , Mockito.any(), Mockito.any()))
                 .thenAnswer{(createCardCallback)
                         .completed(mockObject.mockAddCardResponseAsync())}
 
@@ -193,7 +198,8 @@ class NiumSwitchProviderTests {
         Mockito.when(mockCustomerRepository.findById(Mockito.any()))
                 .thenReturn(Optional.of(mockObject.getTestCustomer()))
         niumCardService.niumSwitchProvider = mockNiumSwitchProvider
-        Mockito.when(mockNiumSwitchProvider.executeHttpPostRequestAsync(Mockito.any(), Mockito.any(), Mockito.any()))
+        Mockito.when(mockNiumSwitchProvider.executeHttpPostRequestAsync(Mockito.any()
+                , Mockito.any(), Mockito.any()))
                 .thenAnswer{
                     createCardCallback.retries = 0
                     (createCardCallback)
@@ -213,7 +219,9 @@ class NiumSwitchProviderTests {
             cardId = UUID.randomUUID().toString()
             cardPin = '1234'
         }
-        mockClient.expect(HttpMethod.POST)
+        niumCardService.niumSwitchProvider = mockNiumSwitchProvider
+        Mockito.when(mockNiumSwitchProvider.executeHttpPostRequestSync(Mockito.anyString()
+                , Mockito.anyString(), Mockito.anyInt()))
                 .thenReturn(new ObjectMapper().writeValueAsString(new Object(){
                     String status = 'Success'
                 }))
@@ -239,6 +247,10 @@ class NiumSwitchProviderTests {
         cardService.cardRepository = mockCardRepository
         Mockito.when(mockCardRepository.findById(Mockito.any()))
                 .thenReturn(Optional.of(mockObject.getTestCard()))
+        niumCardService.niumSwitchProvider = mockNiumSwitchProvider
+        Mockito.when(mockNiumSwitchProvider.executeHttpPostRequestSync(Mockito.anyString()
+                , Mockito.any(), Mockito.anyInt()))
+                .thenReturn(mockObject.mockBlockCardResponse())
 
         CardBlockActionRequest request = new CardBlockActionRequest().tap{
             cardId = UUID.randomUUID().toString()
@@ -262,5 +274,50 @@ class NiumSwitchProviderTests {
         assertFalse(card.enableNFC)
         assertFalse(card.enableMagStripe)
         assertFalse(card.enableCashWithdrawal)
+    }
+
+    @Test
+    void testActivateCardSync(){
+        cardService.cardRepository = mockCardRepository
+        Mockito.when(mockCardRepository.findById(Mockito.any())).thenReturn(Optional.of(mockObject.getTestCard()))
+        Mockito.when(mockCardRepository.save(Mockito.any())).thenReturn(null)
+        niumCardService.niumSwitchProvider = mockNiumSwitchProvider
+        Mockito.when(mockNiumSwitchProvider.executeHttpPostRequestSync(Mockito.anyString()
+                , Mockito.any(), Mockito.anyInt()))
+                .thenReturn(mockObject.mockActivateCardResponse())
+
+        Card card = cardService.activateCard(UUID.randomUUID().toString())
+        assertTrue(card.physicallyIssued)
+        assertTrue(card.physicalCardActivatedByCustomer)
+        assertFalse(card.virtuallyIssued)
+        assertFalse(card.virtualCardActivatedByCustomer)
+    }
+
+    @Test
+    void testActivateCardSyncFailure(){
+        cardService.cardRepository = mockCardRepository
+        Mockito.when(mockCardRepository.findById(Mockito.any())).thenReturn(Optional.of(mockObject.getTestCard()))
+        Mockito.when(mockCardRepository.save(Mockito.any())).thenReturn(null)
+
+        niumCardService.niumSwitchProvider = mockNiumSwitchProvider
+        Mockito.when(mockNiumSwitchProvider.executeHttpPostRequestSync(Mockito.anyString()
+                , Mockito.any(), Mockito.anyInt()))
+                .thenReturn(mockObject.mockActivateCardResponseFailure())
+
+        assertThrows(Exception.class, () -> {
+            Card card = cardService.activateCard(UUID.randomUUID().toString())
+        })
+    }
+
+    @Test
+    void testCardLimitControls(){
+        cardService.cardRepository = mockCardRepository
+        Mockito.when(mockCardRepository.findById(Mockito.any())).thenReturn(Optional.of(mockObject.getTestCard()))
+        Mockito.when(mockCardRepository.save(Mockito.any())).thenReturn(null)
+
+        Card card = cardService.setCardLimits(mockObject.getTestCardLimitRequest())
+        assert card.perTransactionLimit.value == 100.00
+        assert card.monthlyTransactionLimit.isEnabled
+        assert card.dailyTransactionLimit.additionalMarginPercentage == 5.00
     }
 }

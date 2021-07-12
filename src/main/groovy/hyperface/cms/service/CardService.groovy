@@ -3,16 +3,18 @@ package hyperface.cms.service
 
 import hyperface.cms.commands.CardBlockActionRequest
 import hyperface.cms.commands.CardChannelControlsRequest
+import hyperface.cms.commands.CardLimitsRequest
 import hyperface.cms.commands.CreateCardRequest
 import hyperface.cms.commands.SetCardPinRequest
+import hyperface.cms.commands.CardLimitsRequest.CardLimit.TransactionLimitType
 import hyperface.cms.domains.Card
 import hyperface.cms.domains.CreditAccount
 import hyperface.cms.domains.CreditCardProgram
 import hyperface.cms.domains.Customer
+import hyperface.cms.domains.TransactionLimit
 import hyperface.cms.repository.CardProgramRepository
 import hyperface.cms.repository.CardRepository
 import hyperface.cms.repository.CreditAccountRepository
-import hyperface.cms.repository.CustomerRepository
 import hyperface.cms.service.SwitchProviders.Nium.CardManagement.NiumCardService
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Service
@@ -21,9 +23,6 @@ import java.security.InvalidParameterException
 
 @Service
 class CardService {
-
-    @Autowired
-    CustomerRepository customerRepository
 
     @Autowired
     CardRepository cardRepository
@@ -76,8 +75,12 @@ class CardService {
         card.enableCashWithdrawal = false
         card.enableMagStripe = false
 
-        card.dailyTransactionLimit = cardProgram.defaultDailyTransactionLimit
-        card.dailyCashWithdrawalLimit = cardProgram.defaultDailyCashWithdrawalLimit
+        card.dailyTransactionLimit = new TransactionLimit().tap{
+            value = cardProgram.defaultDailyTransactionLimit
+        }
+        card.dailyCashWithdrawalLimit = new TransactionLimit().tap{
+            value = cardProgram.defaultDailyCashWithdrawalLimit
+        }
 
         cardRepository.save(card)
         return card
@@ -138,6 +141,60 @@ class CardService {
         card.enableCashWithdrawal = cardChannelControlsRequest.enableCashWithdrawl
         card.enableMagStripe = cardChannelControlsRequest.enableMagStripe
         card.enableNFC = cardChannelControlsRequest.enableNFC
+        cardRepository.save(card)
+        return card
+    }
+
+    public Card activateCard(String cardId){
+        Card card = cardRepository.findById(cardId)
+                .orElseThrow(() -> new IllegalArgumentException("No card found with card" +
+                        " id ${cardId}"))
+        boolean response = niumCardService.activateCard(card)
+        if(response){
+            card.physicalCardActivatedByCustomer = card.physicallyIssued ? true : card.physicalCardActivatedByCustomer
+            card.virtualCardActivatedByCustomer = card.virtuallyIssued ? true : card.virtualCardActivatedByCustomer
+        }
+        cardRepository.save(card)
+
+        return card
+    }
+
+    public Card setCardLimits(CardLimitsRequest cardLimitsRequest){
+        Card card = cardRepository.findById(cardLimitsRequest.cardId)
+                .orElseThrow(() -> new IllegalArgumentException("No card found with card" +
+                        " id ${cardLimitsRequest.cardId}"))
+
+        for(def limit : cardLimitsRequest.cardLimits){
+            switch(limit.type){
+                case TransactionLimitType.PER_TRANSACTION_LIMIT:
+                    card.perTransactionLimit.value = limit.value.toDouble()
+                    card.perTransactionLimit.isEnabled = limit.isEnabled
+                    card.perTransactionLimit.additionalMarginPercentage = limit.additionalMarginPercentage
+                    break
+                case TransactionLimitType.DAILY_LIMIT:
+                    card.dailyTransactionLimit.value = limit.value.toDouble()
+                    card.dailyTransactionLimit.isEnabled = limit.isEnabled
+                    card.dailyTransactionLimit.additionalMarginPercentage = limit.additionalMarginPercentage
+                    break
+                case TransactionLimitType.MONTHLY_LIMIT:
+                    card.monthlyTransactionLimit.value = limit.value.toDouble()
+                    card.monthlyTransactionLimit.isEnabled = limit.isEnabled
+                    card.monthlyTransactionLimit.additionalMarginPercentage = limit.additionalMarginPercentage
+                    break
+                case TransactionLimitType.LIFETIME_LIMIT:
+                    card.lifetimeTransactionLimit.value = limit.value.toDouble()
+                    card.lifetimeTransactionLimit.isEnabled = limit.isEnabled
+                    card.lifetimeTransactionLimit.additionalMarginPercentage = limit.additionalMarginPercentage
+                    break
+                case TransactionLimitType.DAILY_CASH_WITHDRAWAL_LIMIT:
+                    card.dailyCashWithdrawalLimit.value = limit.value.toDouble()
+                    card.dailyCashWithdrawalLimit.isEnabled = limit.isEnabled
+                    card.dailyCashWithdrawalLimit.additionalMarginPercentage = limit.additionalMarginPercentage
+                    break
+                default:
+                    throw new InvalidParameterException("Invalid Limit Type!")
+            }
+        }
         cardRepository.save(card)
         return card
     }

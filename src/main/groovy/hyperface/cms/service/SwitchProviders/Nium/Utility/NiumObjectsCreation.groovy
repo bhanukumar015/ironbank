@@ -63,25 +63,25 @@ class NiumObjectsCreation {
         return objectMapper.writeValueAsString(cardAction)
     }
 
-    // Enums for Nium card creation
+    // Enums for Nium object creation
     enum NiumCardType {
         GPR_PHY("Physical"),
         GPR_VIR("Virtual"),
-        GPR_VIR_UP2PHY("VirtualUpgradeToPhysical");
+        GPR_VIR_UP2PHY("VirtualUpgradeToPhysical")
 
-        private String text;
+        private String text
 
         NiumCardType(String text) {
-            this.text = text;
+            this.text = text
         }
 
         public static NiumCardType fromString(String text) {
             for (NiumCardType b : values()) {
                 if (b.text.equalsIgnoreCase(text)) {
-                    return b;
+                    return b
                 }
             }
-            throw new InvalidParameterException("Value ${text} not supported for Nium card types");
+            throw new InvalidParameterException("Value ${text} not supported for Nium card types")
         }
     }
 }

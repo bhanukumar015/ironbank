@@ -2,12 +2,14 @@ package hyperface.cms.SwitchProvidersTests.Utility
 
 import hyperface.cms.Constants
 import hyperface.cms.commands.CardChannelControlsRequest
+import hyperface.cms.commands.CardLimitsRequest
 import hyperface.cms.commands.CreateCardRequest
 import hyperface.cms.domains.Address
 import hyperface.cms.domains.Card
 import hyperface.cms.domains.CreditAccount
 import hyperface.cms.domains.CreditCardProgram
 import hyperface.cms.domains.Customer
+import hyperface.cms.domains.TransactionLimit
 import kong.unirest.Cookies
 import kong.unirest.Headers
 import kong.unirest.HttpResponse
@@ -84,7 +86,7 @@ class MockObjects {
             switchCardId = UUID.randomUUID().toString()
             lastFourDigits = UUID.randomUUID().toString()
             physicallyIssued = true
-            virtuallyIssued = true
+            virtuallyIssued = false
             virtualCardActivatedByCustomer = false
             physicalCardActivatedByCustomer = false
             cardSuspendedByCustomer = false
@@ -94,9 +96,37 @@ class MockObjects {
             enableOnlineTransactions = false
             enableCashWithdrawal = false
             enableMagStripe = false
+            perTransactionLimit = new TransactionLimit()
+            monthlyTransactionLimit = new TransactionLimit()
+            dailyTransactionLimit = new TransactionLimit()
             creditAccount = this.getTestCreditAccount()
         }
         return card
+    }
+
+    public CardLimitsRequest getTestCardLimitRequest(){
+        return new CardLimitsRequest().tap {
+            cardId = UUID.randomUUID().toString()
+            cardLimits = new LinkedList<CardLimitsRequest.CardLimit>()
+            cardLimits.add(new CardLimitsRequest.CardLimit().tap {
+                type = CardLimitsRequest.CardLimit.TransactionLimitType.DAILY_LIMIT
+                value = 1000.00
+                additionalMarginPercentage = 5.0
+                isEnabled = true
+            })
+            cardLimits.add(new CardLimitsRequest.CardLimit().tap {
+                type = CardLimitsRequest.CardLimit.TransactionLimitType.PER_TRANSACTION_LIMIT
+                value = 100.00
+                additionalMarginPercentage = 5.0
+                isEnabled = false
+            })
+            cardLimits.add(new CardLimitsRequest.CardLimit().tap {
+                type = CardLimitsRequest.CardLimit.TransactionLimitType.MONTHLY_LIMIT
+                value = 10000.00
+                additionalMarginPercentage = 5.0
+                isEnabled = true
+            })
+        }
     }
 
     private String getRandomEmailAddress(){
@@ -272,5 +302,24 @@ class MockObjects {
             enableOverseasTransactions = true
             enableOnlineTransactions = true
         }
+    }
+
+    public String mockActivateCardResponse(){
+        JSONObject response = new JSONObject()
+                .put('status', 'Active')
+        return response.toString()
+    }
+
+    public String mockBlockCardResponse(){
+        JSONObject response = new JSONObject()
+                .put('status', 'Success')
+        return response.toString()
+    }
+
+    public String mockActivateCardResponseFailure(){
+        JSONObject response = new JSONObject()
+                .put('status', 'BAD_REQUEST')
+                .put('errors', ["Card already activated!"])
+        return response.toString()
     }
 }
