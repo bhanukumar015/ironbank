@@ -44,11 +44,11 @@ class CreditCardProgram extends HyperfaceProgram {
     Boolean cardIssuing = true
 
     ZonedDateTime dueDate
-    Integer gracePeriod //Days
-    Double minimumAmountDue
+    Integer gracePeriodInDays
+    Double minimumAmountDueFloor
 
-    Double overlimitAuth //percentage
-    Double cashAdvanceLimit //percentage
+    Double overLimitAuthPct
+    Double cashAdvanceLimitPct
 
     @ManyToOne
     CreditCardScheduleOfCharges scheduleOfCharges
