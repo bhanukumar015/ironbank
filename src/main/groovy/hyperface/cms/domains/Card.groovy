@@ -1,7 +1,9 @@
 package hyperface.cms.domains
 
+import hyperface.cms.domains.converters.SimpleJsonConverter
 import org.hibernate.annotations.GenericGenerator
 
+import javax.persistence.Convert
 import javax.persistence.Entity
 import javax.persistence.GeneratedValue
 import javax.persistence.Id
@@ -35,14 +37,24 @@ class Card implements PaymentInstrument {
 
     Boolean cardSuspendedByCustomer = false
     Boolean enableOverseasTransactions = false
-    Boolean enableDomesticTransactions = false
+    Boolean enableOfflineTransactions = false
     Boolean enableNFC = false
     Boolean enableOnlineTransactions = false
     Boolean enableCashWithdrawal = false
+    Boolean enableMagStripe = false
 
-    Double dailyCashWithdrawalLimit
-    Double dailyTransactionLimit
+    @Convert(converter = SimpleJsonConverter.class)
+    TransactionLimit dailyCashWithdrawalLimit
+    @Convert(converter = SimpleJsonConverter.class)
+    TransactionLimit dailyTransactionLimit
+    @Convert(converter = SimpleJsonConverter.class)
+    TransactionLimit perTransactionLimit
+    @Convert(converter = SimpleJsonConverter.class)
+    TransactionLimit monthlyTransactionLimit
+    @Convert(converter = SimpleJsonConverter.class)
+    TransactionLimit lifetimeTransactionLimit
 
+    Boolean isLocked = false
     Boolean hotlisted = false
 
     @ManyToOne
@@ -57,4 +69,10 @@ class Card implements PaymentInstrument {
 
     @ManyToOne
     Bank bank
+}
+
+public class TransactionLimit{
+    Double value
+    Double additionalMarginPercentage
+    Boolean isEnabled
 }

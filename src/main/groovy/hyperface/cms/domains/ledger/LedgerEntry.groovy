@@ -12,6 +12,11 @@ import javax.persistence.GenerationType
 import javax.persistence.Id
 import javax.persistence.ManyToOne
 
+/**
+ *
+ * @deprecated use {@link hyperface.cms.domains.ledger.TransactionLedger} instead.
+ */
+@Deprecated(forRemoval = true)
 @Entity
 class LedgerEntry {
     @Id

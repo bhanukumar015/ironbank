@@ -1,6 +1,7 @@
 package hyperface.cms.service.SwitchProviders.Nium.Utility
 
 import com.fasterxml.jackson.databind.ObjectMapper
+import hyperface.cms.commands.CardBlockActionRequest
 import hyperface.cms.commands.CreateCardRequest
 import hyperface.cms.domains.CreditCardProgram
 import hyperface.cms.domains.Customer
@@ -54,25 +55,33 @@ class NiumObjectsCreation {
         return objectMapper.writeValueAsString(niumCard)
     }
 
-    // Enums for Nium card creation
+    public String createCardActionRequest(CardBlockActionRequest cardBlockActionRequest){
+        Object cardAction = new Object(){
+            String reason = cardBlockActionRequest.reason
+            String blockAction = cardBlockActionRequest.blockAction
+        }
+        return objectMapper.writeValueAsString(cardAction)
+    }
+
+    // Enums for Nium object creation
     enum NiumCardType {
         GPR_PHY("Physical"),
         GPR_VIR("Virtual"),
-        GPR_VIR_UP2PHY("VirtualUpgradeToPhysical");
+        GPR_VIR_UP2PHY("VirtualUpgradeToPhysical")
 
-        private String text;
+        private String text
 
         NiumCardType(String text) {
-            this.text = text;
+            this.text = text
         }
 
         public static NiumCardType fromString(String text) {
             for (NiumCardType b : values()) {
                 if (b.text.equalsIgnoreCase(text)) {
-                    return b;
+                    return b
                 }
             }
-            throw new InvalidParameterException("Value ${text} not supported for Nium card types");
+            throw new InvalidParameterException("Value ${text} not supported for Nium card types")
         }
     }
 }

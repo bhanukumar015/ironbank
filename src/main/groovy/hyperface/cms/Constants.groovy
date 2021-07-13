@@ -75,5 +75,6 @@ class Constants {
         CASH_WITHDRAWAL
     }
 
-
+    public final static String NiumSuccessResponseKey = 'status'
+    public final static String NiumSuccessResponseValue = 'Success'
 }

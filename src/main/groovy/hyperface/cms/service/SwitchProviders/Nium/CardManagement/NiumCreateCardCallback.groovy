@@ -6,7 +6,7 @@ import hyperface.cms.commands.CreateCardRequest
 import hyperface.cms.domains.Card
 import hyperface.cms.domains.CreditAccount
 import hyperface.cms.domains.CreditCardProgram
-import hyperface.cms.repository.CardProgramRepository
+import hyperface.cms.domains.TransactionLimit
 import hyperface.cms.repository.CardRepository
 import hyperface.cms.repository.CreditAccountRepository
 import hyperface.cms.service.SwitchProviders.Nium.NiumSwitchProvider
@@ -31,9 +31,6 @@ class NiumCreateCardCallback implements Callback<JsonNode>{
 
     @Autowired
     CreditAccountRepository creditAccountRepository
-
-    @Autowired
-    CardProgramRepository cardProgramRepository
 
     @Autowired
     NiumObjectsCreation niumObjectsCreation
@@ -71,13 +68,17 @@ class NiumCreateCardCallback implements Callback<JsonNode>{
             card.physicalCardActivatedByCustomer = false
             card.cardSuspendedByCustomer = false
             card.enableOverseasTransactions = false
-            card.enableDomesticTransactions = false
+            card.enableOfflineTransactions = false
             card.enableNFC = false
             card.enableOnlineTransactions = false
             card.enableCashWithdrawal = false
 
-            card.dailyTransactionLimit = cardProgram.defaultDailyTransactionLimit
-            card.dailyCashWithdrawalLimit = cardProgram.defaultDailyCashWithdrawalLimit
+            card.dailyTransactionLimit = new TransactionLimit().tap {
+                value = cardProgram.defaultDailyTransactionLimit
+            }
+            card.dailyCashWithdrawalLimit = new TransactionLimit().tap{
+                value = cardProgram.defaultDailyCashWithdrawalLimit
+            }
 
             cardRepository.save(card)
         }
