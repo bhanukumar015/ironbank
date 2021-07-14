@@ -59,19 +59,19 @@ class CmsApplicationTests {
 		return cal.getTime()
 	}
 
-//	@Test
-//	void testHistoryController() {
-//		AuthorizationRequest req1 = getBasicDebitReq()
-//		req1.transactionDate = addXDaysToTime(-10)
-//
-//		AuthorizationRequest req2 = getBasicDebitReq()
-//		req2.transactionDate = addXDaysToTime(-9)
-//
-//		historyController.createTxn(req1)
-//		historyController.createTxn(req2)
-//
-//		println creditAccountRepository.findById("0da1b2cb-31b0-4210-a5d0-20089db12114").get().dump()
-//	}
+	@Test
+	void testHistoryController() {
+		AuthorizationRequest req1 = getBasicDebitReq()
+		req1.transactionDate = addXDaysToTime(-10)
+
+		AuthorizationRequest req2 = getBasicDebitReq()
+		req2.transactionDate = addXDaysToTime(-9)
+
+		historyController.createTxn(req1)
+		historyController.createTxn(req2)
+
+		println creditAccountRepository.findById("0da1b2cb-31b0-4210-a5d0-20089db12114").get().dump()
+	}
 
 	@Test
 	void testScheduleOfCharges() {
