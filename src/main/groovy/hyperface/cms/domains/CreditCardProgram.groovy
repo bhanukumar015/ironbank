@@ -9,7 +9,9 @@ import javax.persistence.EnumType
 import javax.persistence.Enumerated
 import javax.persistence.GeneratedValue
 import javax.persistence.Id
+import javax.persistence.JoinColumn
 import javax.persistence.ManyToOne
+import java.time.ZonedDateTime
 import javax.persistence.OneToMany
 
 @Entity
@@ -37,6 +39,22 @@ class CreditCardProgram extends HyperfaceProgram {
     String cardLogoId
     String cardPlasticId
 
+
+    String startingCardNumber
+    String endingCardNumber
+    String lastUsedCardNumber
+
+    Boolean domesticUsage
+    Boolean internationalUsage
+    Boolean cardIssuing = true
+
+    ZonedDateTime dueDate
+    Integer gracePeriodInDays
+    Double minimumAmountDueFloor
+
+    Double overLimitAuthPct
+    Double cashAdvanceLimitPct
+
     // Count for accounts created in the current day
     Integer currentDayAccountCount
     // Max limit for account creation in a day
@@ -54,10 +72,12 @@ class CreditCardProgram extends HyperfaceProgram {
     // Max limit for total account creation
     Integer lifetimeAccountLimit
 
+
     @ManyToOne
     CreditCardScheduleOfCharges scheduleOfCharges
 
     @ManyToOne
+    @JoinColumn(name="card_bin_id")
     CardBin cardBin
 
     @ManyToOne
