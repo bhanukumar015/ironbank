@@ -45,7 +45,7 @@ class CardService {
         CreditAccount creditAccount = creditAccountRepository.findById(cardRequest.creditAccountId)
                 .orElseThrow(() -> new IllegalArgumentException("No credit account found " +
                         "with the given Id ${cardRequest.creditAccountId}"))
-        CreditCardProgram cardProgram = cardProgramRepository.findById(cardRequest.cardProgramId as Long)
+        CreditCardProgram cardProgram = cardProgramRepository.findById(cardRequest.cardProgramId)
                 .orElseThrow(() -> new IllegalArgumentException("No card program found with " +
                         "the given Id ${cardRequest.cardProgramId}"))
         List<Card> existingOnes = getCards(creditAccount)
