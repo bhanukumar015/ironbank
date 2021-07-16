@@ -1,23 +1,41 @@
 package hyperface.cms.service
 
 import hyperface.cms.Constants
-import hyperface.cms.Constants.LedgerEntryType
 import hyperface.cms.commands.AuthorizationRequest
+import hyperface.cms.commands.CustomerTransactionRequest
+import hyperface.cms.commands.CustomerTransactionResponse
 import hyperface.cms.commands.SettlementRequest
+import hyperface.cms.domains.Account
 import hyperface.cms.domains.Card
 import hyperface.cms.domains.CreditAccount
 import hyperface.cms.domains.CreditCardProgram
+import hyperface.cms.domains.CustomerTransaction
 import hyperface.cms.domains.CustomerTxn
+import hyperface.cms.domains.batch.CurrencyConversion
 import hyperface.cms.domains.interest.InterestCriteria
 import hyperface.cms.domains.ledger.LedgerEntry
+import hyperface.cms.domains.ledger.TransactionLedger
+import hyperface.cms.model.enums.AuthorizationType
+import hyperface.cms.model.enums.LedgerTransactionType
+import hyperface.cms.model.enums.MoneyMovementIndicator
+import hyperface.cms.model.enums.SovereigntyIndicator
+import hyperface.cms.model.enums.TransactionStatus
+import hyperface.cms.model.enums.TransactionType
 import hyperface.cms.repository.CardRepository
 import hyperface.cms.repository.CreditAccountRepository
+import hyperface.cms.repository.CustomerTransactionRepository
 import hyperface.cms.repository.CustomerTxnRepository
 import hyperface.cms.repository.LedgerEntryRepository
+import hyperface.cms.repository.TransactionLedgerRepository
+import hyperface.cms.repository.batch.CurrencyConversionRepository
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
+import org.springframework.web.server.ResponseStatusException
+
+import java.time.ZonedDateTime
 
 
 @Service
@@ -32,39 +50,113 @@ class PaymentService {
     private CreditAccountRepository creditAccountRepository
 
     @Autowired
-    CardRepository cardRepository
+    private CardRepository cardRepository
 
     @Autowired
     private CustomerTxnRepository customerTxnRepository
 
-    private CustomerTxn createCustomerTxn(AuthorizationRequest req) {
-        CustomerTxn txn = new CustomerTxn()
-        txn.cardSwitch = req.cardSwitch
-        txn.switchTransactionId = req.transactionId
+    @Autowired
+    private CustomerTransactionRepository customerTransactionRepository
+
+    @Autowired
+    private CurrencyConversionRepository currencyConversionRepository
+
+    @Autowired
+    private TransactionLedgerRepository transactionLedgerRepository
+
+    public Boolean checkTransactionEligibility(CustomerTransactionRequest req) {
+        if (req.card == null) {
+            String errorMessage = "Card with ID: [" + req.cardId + "] does not exist."
+            log.error("Error occurred while doing transaction with the cardID : [{}]. Exception: [{}]", req.cardId, errorMessage)
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, errorMessage)
+        }
+
+        if (req.card.hotlisted) {
+            String errorMessage = "Card with ID: [" + req.cardId + "] blocked permanently."
+            log.error("Error occurred while doing transaction with the cardID : [{}]. Exception: [{}]", req.cardId, errorMessage)
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, errorMessage)
+        }
+
+        if (req.card.isLocked) {
+            String errorMessage = "Card with ID: [" + req.cardId + "] is locked."
+            log.error("Error occurred while doing transaction with the cardID : [{}]. Exception: [{}]", req.cardId, errorMessage)
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, errorMessage)
+        }
+        println req.transactionCurrency != req.card.creditAccount.defaultCurrency
+        println req.transactionCurrency
+        println req.card.creditAccount.defaultCurrency
+        if (req.transactionCurrency != req.card.creditAccount.defaultCurrency && !req.card.enableOverseasTransactions){
+            String errorMessage = "Card with ID: [" + req.cardId + "] international transaction are disabled"
+            log.error("Error occurred while doing transaction with the cardID : [{}]. Exception: [{}]", req.cardId, errorMessage)
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, errorMessage)
+        }
+
+        return true
+    }
+    public CustomerTransaction createCustomerTxn(CustomerTransactionRequest req) {
+
+        Account account = req.card.creditAccount
+        CustomerTransaction txn = new CustomerTransaction()
         txn.card = req.card
-        txn.account = req.card.creditAccount
+        txn.txnDate = req.transactionDate ?: ZonedDateTime.now()
+        txn.transactionType = (TransactionType)req.transactionType
+        txn.txnDescription = req.transactionDescription
+        txn.transactionAmount = req.transactionAmount
+        txn.transactionCurrency = req.transactionCurrency
+        txn.authorizationType = AuthorizationType.NOT_APPLICABLE
+        txn.billingAmount = req.transactionAmount
+        txn.billingCurrency = req.transactionCurrency
+        if (txn.transactionCurrency != req.card.creditAccount.defaultCurrency) {
+            txn.sovereigntyIndicator = SovereigntyIndicator.INTERNATIONAL
+            CurrencyConversion currencyConversion =
+                    currencyConversionRepository.findBySourceCurrencyAndDestinationCurrency(
+                            req.transactionCurrency, req.card.creditAccount.defaultCurrency)
+            println currencyConversion.conversionRate
+            txn.billingAmount = req.transactionAmount * currencyConversion.conversionRate
+            txn.billingCurrency = req.card.creditAccount.defaultCurrency
+        }
+        if (txn.billingAmount > req.card.creditAccount.availableCreditLimit) {
+            String errorMessage = "Account with ID: [" + req.card.creditAccount.id + "] insufficient balance"
+            log.error("Error occurred while doing transaction with the accountId : [{}]. Exception: [{}]", req.card.creditAccount.id, errorMessage)
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, errorMessage)
+        }
+        txn.txnStatus = TransactionStatus.NOT_APPLICABLE
         txn.mid = req.merchantTerminalId
         txn.tid = req.merchantTerminalId
-        txn.merchantName = req.merchantNameLocation
-        txn.description = ""
-        txn.retrievalReferenceNumber = req.retrievalReferenceNumber
-        txn.systemTraceAuditNumber = req.systemTraceAuditNumber
-        txn.txnRefId = req.transactionId
-        txn.channel = CustomerTxn.Channel.Chip_And_Pin
-        txn.txnType = req.transactionType
-        txn.transactionCurrency = req.transactionCurrency
-        txn.transactionAmount = req.transactionAmount
-        txn.billingAmount = req.billingAmount
-        txn.billingCurrency = req.billingCurrency
         txn.mcc = req.merchantCategoryCode
-        if(txn.txnType == Constants.TxnType.AUTH) {
-            txn.authorizedAmount = req.billingAmount
+        customerTransactionRepository.save(txn)
+        if (txn.transactionType == TransactionType.SETTLEMENT_DEBIT)
+            account.availableCreditLimit -= txn.billingAmount
+        else
+            account.availableCreditLimit += txn.billingAmount
+        creditAccountRepository.save(account)
+
+        switch (txn.transactionType) {
+            case TransactionType.SETTLEMENT_DEBIT:
+                createDebitEntry(txn)
+                break
+            case TransactionType.SETTLEMENT_CREDIT:
+                createCreditEntry(txn)
+                break
         }
-        txn.transactedOn = req.transactionDate ?: new Date()
-        txn.postedToLedger = false
+        println txn.dump()
         return txn
     }
 
+    public CustomerTransactionResponse getCustomerTransactionResponse(CustomerTransaction txn) {
+        CustomerTransactionResponse txnResponse = new CustomerTransactionResponse()
+        txnResponse.id = txn.id
+        txnResponse.cardId = txn.card.id
+        txnResponse.transactionAmount = txn.transactionAmount
+        txnResponse.transactionCurrency = txn.transactionCurrency
+        txnResponse.billingAmount = txn.billingAmount
+        txnResponse.billingCurrency = txn.billingCurrency
+        txnResponse.transactionStatus = txn.txnStatus
+        txnResponse.transactionDescription = txn.txnDescription
+        txnResponse.transactionDate = txn.txnDate
+
+        return txnResponse
+    }
     public CustomerTxn processAuthorization(AuthorizationRequest req) {
         CustomerTxn txn = createCustomerTxn(req)
         // reduce this balance from the available credit limit
@@ -88,7 +180,7 @@ class PaymentService {
     }
 
     // TODO - how to make sure that this is processed only once?
-    public void processSettlementDebit(SettlementRequest req) {
+   @Deprecated public void processSettlementDebit(SettlementRequest req) {
         Card card = cardRepository.findById(req.cardId).get()
         assert card != null
         CreditAccount creditAccount = card.creditAccount
@@ -138,66 +230,53 @@ class PaymentService {
         customerTxnRepository.save(txn)
     }
 
-    private LedgerEntry createDebitEntry(CreditAccount account, CustomerTxn customerTxn) {
-        LedgerEntry debitEntry = new LedgerEntry()
-        debitEntry.account = account
-        debitEntry.amount = customerTxn.billingAmount
-        debitEntry.createdOn = new Date()
-        debitEntry.openingBalance = account.currentBalance
-        debitEntry.ledgerEntryType = LedgerEntryType.Debit
-        debitEntry.customerTxn = customerTxn
-        debitEntry.description = customerTxn.description
-        debitEntry.closingBalance = account.currentBalance - customerTxn.billingAmount
-        return debitEntry
-    }
-
-    private LedgerEntry createDebitEntry(CreditAccount account, CustomerTxn customerTxn, Double settlementAmount) {
-        LedgerEntry debitEntry = new LedgerEntry()
-        debitEntry.account = account
-        debitEntry.amount = settlementAmount
-        debitEntry.createdOn = new Date()
-        debitEntry.openingBalance = account.currentBalance
-        debitEntry.ledgerEntryType = LedgerEntryType.Debit
-        debitEntry.customerTxn = customerTxn
-        debitEntry.merchantName = customerTxn.merchantName
-        debitEntry.description = customerTxn.description
-        debitEntry.closingBalance = account.currentBalance - settlementAmount
-        return debitEntry
-    }
-
-    private LedgerEntry createCreditEntry(CreditAccount account, CustomerTxn customerTxn, Double settlementAmount) {
-        LedgerEntry creditEntry = new LedgerEntry()
-        creditEntry.account = account
-        creditEntry.amount = settlementAmount
-        creditEntry.openingBalance = account.currentBalance
-        creditEntry.closingBalance = account.currentBalance + settlementAmount
-        creditEntry.ledgerEntryType = LedgerEntryType.Credit
-        creditEntry.description = customerTxn.description
-        creditEntry.customerTxn = customerTxn
-        creditEntry.merchantName = customerTxn.merchantName
-        creditEntry.description = customerTxn.description
-        creditEntry.createdOn = new Date()
-        return creditEntry
-    }
-
-    private LedgerEntry createCreditEntry(CreditAccount account, CustomerTxn customerTxn) {
-        LedgerEntry creditEntry = new LedgerEntry()
-        creditEntry.account = account
-        creditEntry.amount = customerTxn.billingAmount
-        creditEntry.openingBalance = account.currentBalance
-        creditEntry.closingBalance = account.currentBalance + customerTxn.billingAmount
-        creditEntry.ledgerEntryType = LedgerEntryType.Credit
-        creditEntry.description = customerTxn.description
-        creditEntry.customerTxn = customerTxn
-        creditEntry.createdOn = new Date()
-        return creditEntry
-    }
-
     public Integer getInterestRateForTxn(LedgerEntry ledgerEntry) {
         CreditCardProgram program = ledgerEntry.customerTxn.card.cardProgram
         InterestCriteria matchedCriteria = program.scheduleOfCharges.interestCriteriaList?.find({
             return it.checkForMatch(ledgerEntry)
         })
         return matchedCriteria?.getAprInBps()?:program.annualizedPercentageRateInBps
+    }
+
+    private TransactionLedger createDebitEntry(CustomerTransaction txn) {
+        CreditAccount account = txn.card.creditAccount
+        TransactionLedger debitEntry = new TransactionLedger()
+        debitEntry.transactionAmount = txn.billingAmount
+        debitEntry.txnDescription = txn.txnDescription
+        debitEntry.postingDate = ZonedDateTime.now()
+        debitEntry.moneyMovementIndicator = MoneyMovementIndicator.DEBIT
+        if (txn.transactionType == TransactionType.SETTLEMENT_DEBIT) {
+            debitEntry.transactionType = LedgerTransactionType.PURCHASE
+        }
+        debitEntry.openingBalance = account.currentBalance
+        debitEntry.closingBalance = account.currentBalance - txn.billingAmount
+        debitEntry.transaction = txn
+        transactionLedgerRepository.save(debitEntry)
+        txn.txnStatus = TransactionStatus.APPROVED
+        customerTransactionRepository.save(txn)
+        account.currentBalance = debitEntry.closingBalance
+        creditAccountRepository.save(account)
+        return debitEntry
+    }
+
+    private TransactionLedger createCreditEntry(CustomerTransaction txn) {
+        CreditAccount account = txn.card.creditAccount
+        TransactionLedger creditEntry = new TransactionLedger()
+        creditEntry.transactionAmount = txn.billingAmount
+        creditEntry.txnDescription = txn.txnDescription
+        creditEntry.postingDate = ZonedDateTime.now()
+        creditEntry.moneyMovementIndicator = MoneyMovementIndicator.CREDIT
+        if (txn.transactionType == TransactionType.SETTLEMENT_CREDIT) {
+            creditEntry.transactionType = LedgerTransactionType.PURCHASE_REVERSAL
+        }
+        creditEntry.openingBalance = account.currentBalance
+        creditEntry.closingBalance = account.currentBalance + txn.billingAmount
+        creditEntry.transaction = txn
+        transactionLedgerRepository.save(creditEntry)
+        txn.txnStatus = TransactionStatus.APPROVED
+        customerTransactionRepository.save(txn)
+        account.currentBalance = creditEntry.closingBalance
+        creditAccountRepository.save(account)
+        return creditEntry
     }
 }

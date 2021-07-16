@@ -19,5 +19,6 @@ enum LedgerTransactionType {
     SURCHARGE_REVERSAL,
     TAX,
     TAX_REVERSAL,
-    PURCHASE;
+    PURCHASE,
+    PURCHASE_REVERSAL;
 }
