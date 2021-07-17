@@ -77,4 +77,9 @@ class Constants {
 
     public final static String NiumSuccessResponseKey = 'status'
     public final static String NiumSuccessResponseValue = 'Success'
+
+    public final static Integer RANDOM_KEY_GENERATOR_LENGTH = 16
+
+    public static final long MAX_IMAGE_FILE_SIZE = 800 //Kilo Bytes
+    public static final List<String> MIME_TYPES = ['image/jpg', 'image/jpeg', 'image/png']
 }
