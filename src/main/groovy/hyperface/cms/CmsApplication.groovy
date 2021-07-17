@@ -7,11 +7,13 @@ import net.javacrumbs.shedlock.spring.annotation.EnableSchedulerLock
 import org.springframework.boot.SpringApplication
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration
 import org.springframework.boot.autoconfigure.SpringBootApplication
+import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.scheduling.annotation.EnableAsync
 import org.springframework.scheduling.annotation.EnableScheduling
 import org.springframework.context.annotation.ComponentScan
+import org.springframework.transaction.annotation.EnableTransactionManagement
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
@@ -25,6 +27,8 @@ import javax.sql.DataSource
 @EnableScheduling
 @EnableSchedulerLock(defaultLockAtMostFor = "10m")
 @EnableAsync
+@EnableTransactionManagement
+@EnableConfigurationProperties
 @ComponentScan(value = "hyperface.cms.*")
 class CmsApplication {
 
