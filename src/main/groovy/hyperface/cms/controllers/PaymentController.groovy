@@ -13,6 +13,7 @@ import hyperface.cms.repository.CreditAccountRepository
 import hyperface.cms.service.AuthorizationManager
 import hyperface.cms.service.PaymentService
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.RequestBody
@@ -20,6 +21,7 @@ import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestMethod
 import org.springframework.web.bind.annotation.ResponseBody
 import org.springframework.web.bind.annotation.RestController
+import org.springframework.web.server.ResponseStatusException
 
 @RestController
 @RequestMapping("/payments")
@@ -85,6 +87,10 @@ public class PaymentController {
 
         println req.dump()
         Card card = cardRepository.findById(req.cardId).get()
+        if (req.card == null) {
+            String errorMessage = "Card with ID: [" + req.cardId + "] does not exist."
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, errorMessage)
+        }
         req.card = card
         CustomerTransaction txn
         if ( paymentService.checkTransactionEligibility(req) )
