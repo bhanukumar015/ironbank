@@ -6,16 +6,22 @@ import org.springframework.data.annotation.LastModifiedDate
 
 import javax.persistence.Column
 import javax.persistence.Entity
+import javax.persistence.EntityListeners
 import javax.persistence.GeneratedValue
 import javax.persistence.Id
+import javax.validation.constraints.NotNull
+
+import org.springframework.data.jpa.domain.support.AuditingEntityListener
 
 @Entity
+@EntityListeners(AuditingEntityListener.class)
 class Client {
     @Id
     @GenericGenerator(name = "client_id", strategy = "hyperface.cms.util.UniqueIdGenerator")
     @GeneratedValue(generator = "client_id")
     String id
 
+    @NotNull
     @Column(nullable = false, unique = true)
     String name
 
@@ -28,11 +34,14 @@ class Client {
     @Column(columnDefinition = "MEDIUMTEXT")
     String logo
 
-    @Column(nullable = false, updatable = false)
+    @NotNull
     @CreatedDate
-    Date createdAt = new Date()
+    @Column(nullable = false, updatable = false)
+    Date createdAt
 
-    @Column(nullable = false)
+
+    @NotNull
     @LastModifiedDate
-    Date modifiedAt = new Date()
+    @Column(nullable = false)
+    Date modifiedAt
 }

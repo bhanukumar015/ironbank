@@ -6,6 +6,7 @@ import hyperface.cms.domains.ClientKey
 import hyperface.cms.repository.ClientKeyRepository
 import hyperface.cms.repository.ClientRepository
 import hyperface.cms.service.ClientService
+import hyperface.cms.util.Utilities
 import org.apache.commons.lang3.ObjectUtils
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
@@ -18,9 +19,10 @@ import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.multipart.MultipartFile
 import org.springframework.web.server.ResponseStatusException
+import hyperface.cms.Constants
 
 @RestController
-@RequestMapping("/clients")
+@RequestMapping(Constants.PATH_CLIENT_BASE_URL)
 @Slf4j
 class ClientController {
 
@@ -36,7 +38,7 @@ class ClientController {
     @RequestMapping(value = "/create", method = RequestMethod.POST, consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     Client createOrSave(Client client, @RequestParam(name = "inputFile", required = false) MultipartFile multipartFile) throws IOException {
         if (ObjectUtils.isNotEmpty(multipartFile)) {
-            String logo = clientService.convertFileToBase64String(multipartFile)
+            String logo = Utilities.convertFileToBase64String(multipartFile)
             client.setLogo(logo)
         }
         client = clientRepository.save(client)
@@ -49,7 +51,7 @@ class ClientController {
     @RequestMapping(value = "/get/{clientId}", method = RequestMethod.GET)
     Client get(@PathVariable(name = "clientId") String clientId) {
         Optional<Client> client = clientRepository.findById(clientId)
-        if(!client.isPresent()) {
+        if (!client.isPresent()) {
             String errorMessage = "Client record with id: ${clientId} is not found"
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, errorMessage)
         }
@@ -59,14 +61,14 @@ class ClientController {
     @RequestMapping(value = "/update/{clientId}", method = RequestMethod.POST, consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     ResponseEntity<Client> update(Client client, @PathVariable(name = "clientId") String clientId, @RequestParam(name = "inputFile", required = false) MultipartFile multipartFile) throws IOException {
         Optional<Client> clientOptional = clientRepository.findById(clientId)
-        if(!clientOptional.isPresent()) {
+        if (!clientOptional.isPresent()) {
             log.error("Client record with id: ${clientId} is not found")
             return ResponseEntity.notFound().build()
         }
 
         Client existingClient = clientOptional.get()
         if (ObjectUtils.isNotEmpty(multipartFile)) {
-            String logo = clientService.convertFileToBase64String(multipartFile)
+            String logo = Utilities.convertFileToBase64String(multipartFile)
             client.setLogo(logo)
         }
 

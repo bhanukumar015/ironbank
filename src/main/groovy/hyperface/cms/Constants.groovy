@@ -5,15 +5,29 @@ class Constants {
     enum Currency {
         INR, USD, EUR, GBP, SGD, AUD, HKD
     }
-    enum CardScheme { Visa, Mastercard, Rupay, Diners, Amex }
 
-    enum CardProgramType { Consumer, Corporate, Commercial }
-    enum CardHost { Hyperface, Worldline, Euronet, Maximus, Nium } // move to database
-    enum CardSwitch { Nium, Maximus, Euronet, Worldline }
+    enum CardScheme {
+        Visa, Mastercard, Rupay, Diners, Amex
+    }
 
-    enum CardType { Physical, Virtual, VirtualUpgradeToPhysical}
+    enum CardProgramType {
+        Consumer, Corporate, Commercial
+    }
 
-    enum LedgerEntryType { Credit, Debit }
+    enum CardHost {
+        Hyperface, Worldline, Euronet, Maximus, Nium
+    } // move to database
+    enum CardSwitch {
+        Nium, Maximus, Euronet, Worldline
+    }
+
+    enum CardType {
+        Physical, Virtual, VirtualUpgradeToPhysical
+    }
+
+    enum LedgerEntryType {
+        Credit, Debit
+    }
 
     enum RejectionCode {
         // https://en.wikipedia.org/wiki/ISO_8583#Response_code
@@ -82,4 +96,7 @@ class Constants {
 
     public static final long MAX_IMAGE_FILE_SIZE = 800 //Kilo Bytes
     public static final List<String> MIME_TYPES = ['image/jpg', 'image/jpeg', 'image/png']
+
+    /* URL Constants */
+    public static final String PATH_CLIENT_BASE_URL = "/clients"
 }
