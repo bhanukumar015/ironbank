@@ -50,7 +50,7 @@ class PaymentService {
     private CreditAccountRepository creditAccountRepository
 
     @Autowired
-    private CardRepository cardRepository
+    public CardRepository cardRepository
 
     @Autowired
     private CustomerTxnRepository customerTxnRepository
@@ -96,6 +96,11 @@ class PaymentService {
     public CustomerTransaction createCustomerTxn(CustomerTransactionRequest req) {
 
         Account account = req.card.creditAccount
+        if (account == null) {
+            String errorMessage = "Card with ID: [" + req.card + "] account not found"
+            log.error("Error occurred while doing transaction with the accountId : [{}]. Exception: [{}]", req.card, errorMessage)
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, errorMessage)
+        }
         CustomerTransaction txn = new CustomerTransaction()
         txn.card = req.card
         txn.txnDate = req.transactionDate ?: ZonedDateTime.now()
@@ -106,16 +111,16 @@ class PaymentService {
         txn.authorizationType = AuthorizationType.NOT_APPLICABLE
         txn.billingAmount = req.transactionAmount
         txn.billingCurrency = req.transactionCurrency
-        if (txn.transactionCurrency != req.card.creditAccount.defaultCurrency) {
+        if (txn.transactionCurrency != account.defaultCurrency) {
             txn.sovereigntyIndicator = SovereigntyIndicator.INTERNATIONAL
             CurrencyConversion currencyConversion =
                     currencyConversionRepository.findBySourceCurrencyAndDestinationCurrency(
-                            req.transactionCurrency, req.card.creditAccount.defaultCurrency)
+                            req.transactionCurrency, account.defaultCurrency)
             println currencyConversion.conversionRate
             txn.billingAmount = req.transactionAmount * currencyConversion.conversionRate
-            txn.billingCurrency = req.card.creditAccount.defaultCurrency
+            txn.billingCurrency = account.defaultCurrency
         }
-        if (txn.billingAmount > req.card.creditAccount.availableCreditLimit) {
+        if (txn.billingAmount > account.availableCreditLimit) {
             String errorMessage = "Account with ID: [" + req.card.creditAccount.id + "] insufficient balance"
             log.error("Error occurred while doing transaction with the accountId : [{}]. Exception: [{}]", req.card.creditAccount.id, errorMessage)
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, errorMessage)
