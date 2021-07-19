@@ -68,21 +68,21 @@ class PaymentService {
 
         if (req.card.hotlisted) {
             String errorMessage = "Card with ID: [" + req.cardId + "] blocked permanently."
-            log.error("Error occurred while doing transaction with the cardID : [{}]. Exception: [{}]", req.cardId, errorMessage)
+            log.error("Error occurred while triggering transaction with the cardID : [{}]. Exception: [{}]", req.cardId, errorMessage)
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, errorMessage)
         }
 
         if (req.card.isLocked) {
             String errorMessage = "Card with ID: [" + req.cardId + "] is locked."
-            log.error("Error occurred while doing transaction with the cardID : [{}]. Exception: [{}]", req.cardId, errorMessage)
+            log.error("Error occurred while triggering transaction with the cardID : [{}]. Exception: [{}]", req.cardId, errorMessage)
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, errorMessage)
         }
         if (req.transactionCurrency != req.card.creditAccount.defaultCurrency && !req.card.enableOverseasTransactions){
             String errorMessage = "Card with ID: [" + req.cardId + "] international transaction are disabled"
-            log.error("Error occurred while doing transaction with the cardID : [{}]. Exception: [{}]", req.cardId, errorMessage)
+            log.error("Error occurred while triggering transaction with the cardID : [{}]. Exception: [{}]", req.cardId, errorMessage)
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, errorMessage)
         }
-        return true
+return true
     }
     public CustomerTransaction createCustomerTxn(CustomerTransactionRequest req) {
 

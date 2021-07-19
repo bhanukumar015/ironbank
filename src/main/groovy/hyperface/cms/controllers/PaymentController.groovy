@@ -85,9 +85,8 @@ public class PaymentController {
             produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<CustomerTransactionResponse> performTransaction(@RequestBody CustomerTransactionRequest req) {
 
-        println req.dump()
         Card card = cardRepository.findById(req.cardId).get()
-        if (req.card == null) {
+        if (card == null) {
             String errorMessage = "Card with ID: [" + req.cardId + "] does not exist."
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, errorMessage)
         }

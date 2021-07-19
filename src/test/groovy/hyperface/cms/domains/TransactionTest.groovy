@@ -1,7 +1,12 @@
 package hyperface.cms.domains
 
+import hyperface.cms.Utility.MockObjects
+import hyperface.cms.commands.CustomerTransactionRequest
+import hyperface.cms.repository.CardRepository
+import hyperface.cms.repository.CreditAccountRepository
 import hyperface.cms.repository.CustomerTransactionRepository
 import hyperface.cms.repository.SystemTransactionRepository
+import hyperface.cms.service.PaymentService
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -15,6 +20,15 @@ class TransactionTest {
     @Autowired
     private SystemTransactionRepository systemTxnRepository
 
+    @Autowired
+    private CreditAccountRepository creditAccountRepository
+
+    @Autowired
+    private CardRepository cardRepository
+
+    @Autowired
+    private PaymentService paymentService
+
     @Test
     void entityCheck() {
         try {
@@ -23,5 +37,29 @@ class TransactionTest {
         } catch (Exception e) {
             Assertions.fail("Exception should not occur. Table: [transaction] must be present in DB.")
         }
+    }
+
+    @Test
+    void testDomesticTransaction() {
+        MockObjects mockObjects = new MockObjects()
+        CustomerTransactionRequest req = mockObjects.getTestCustomerDomesticTransactionResquest()
+        Card card = cardRepository.findById(req.cardId).get()
+        req.card = card
+        boolean eligibility = paymentService.checkTransactionEligibility(req)
+        CustomerTransaction txn = paymentService.createCustomerTxn(req)
+        Assertions.assertTrue(eligibility)
+        Assertions.assertTrue(txn.billingAmount == 1500)
+    }
+
+    @Test
+    void testInternationalTransaction() {
+        MockObjects mockObjects = new MockObjects()
+        CustomerTransactionRequest req = mockObjects.getTestCustomerInternationalTransactionResquest()
+        Card card = cardRepository.findById(req.cardId).get()
+        req.card = card
+        boolean eligibility = paymentService.checkTransactionEligibility(req)
+        CustomerTransaction txn = paymentService.createCustomerTxn(req)
+        Assertions.assertTrue(eligibility)
+        Assertions.assertTrue(txn.billingAmount > 1170)
     }
 }
