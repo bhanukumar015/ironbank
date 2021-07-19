@@ -5,6 +5,7 @@ import hyperface.cms.commands.CardTransaction
 import hyperface.cms.commands.CreateCardRequest
 import hyperface.cms.commands.CreateCreditAccountRequest
 import hyperface.cms.commands.FetchCardTransactionsRequest
+import hyperface.cms.cron.StatementGenerationCron
 import hyperface.cms.domains.Card
 import hyperface.cms.domains.CreditAccount
 import hyperface.cms.domains.Customer
@@ -15,6 +16,7 @@ import hyperface.cms.repository.CustomerRepository
 import hyperface.cms.repository.CustomerTxnRepository
 import hyperface.cms.repository.LedgerEntryRepository
 import hyperface.cms.service.AccountService
+import hyperface.cms.util.MyDateUtil
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.MediaType
 import org.springframework.web.bind.annotation.GetMapping
@@ -36,8 +38,12 @@ public class CustomerController {
     @Autowired
     CustomerTxnRepository customerTxnRepository
 
+    @Autowired
+    StatementGenerationCron statementGenerationCron;
+
     @GetMapping(value = "/list")
     public List<Customer> getCustomers() {
+        statementGenerationCron.statementGenerationCron()
         return customerRepository.findAll()
     }
 
@@ -80,7 +86,7 @@ public class CustomerController {
     public List<CardTransaction> fetchCardTransactions(@RequestParam("cardId") String cardId) {
         println "Input cardId: ${cardId}"
         FetchCardTransactionsRequest req = new FetchCardTransactionsRequest(cardId: cardId)
-        Date from = req.from?:getLastMonthBeginning()
+        Date from = req.from?: MyDateUtil.getLastMonthBeginning()
         Date to = req.to?:(new Date())
         Card card = cardRepository.findById(req.cardId).get()
         CreditAccount creditAccount = card.creditAccount
@@ -98,13 +104,5 @@ public class CustomerController {
         return cardTransactions.sort{it.transactedOn}.reverse()
     }
 
-    private Date getLastMonthBeginning() {
-        Calendar calendar = Calendar.getInstance()
-        calendar.add(Calendar.MONTH, -1)
-        calendar.set(Calendar.DAY_OF_MONTH, 1)
-        calendar.set(Calendar.HOUR, 0)
-        calendar.set(Calendar.MINUTE, 0)
-        calendar.set(Calendar.SECOND, 0)
-        return calendar.getTime()
-    }
+
 }
