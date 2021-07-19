@@ -1,6 +1,7 @@
 package hyperface.cms.domains
 
 import hyperface.cms.Constants
+import hyperface.cms.domains.kyc.KycOption
 import hyperface.cms.domains.rewards.Offer
 import org.hibernate.annotations.GenericGenerator
 
@@ -11,11 +12,20 @@ import javax.persistence.GeneratedValue
 import javax.persistence.Id
 import javax.persistence.JoinColumn
 import javax.persistence.ManyToOne
-import java.time.ZonedDateTime
 import javax.persistence.OneToMany
+import java.time.ZonedDateTime
 
 @Entity
 class CreditCardProgram extends HyperfaceProgram {
+
+    enum DisableLevel {
+        DAILY,
+        WEEKLY,
+        MONTHLY,
+        LIFETIME,
+        MANUAL
+    }
+
     @Id
     @GenericGenerator(name = "card_program_id", strategy = "hyperface.cms.util.UniqueIdGenerator")
     @GeneratedValue(generator = "card_program_id")
@@ -77,7 +87,7 @@ class CreditCardProgram extends HyperfaceProgram {
     CreditCardScheduleOfCharges scheduleOfCharges
 
     @ManyToOne
-    @JoinColumn(name="card_bin_id")
+    @JoinColumn(name = "card_bin_id")
     CardBin cardBin
 
     @ManyToOne
@@ -86,13 +96,10 @@ class CreditCardProgram extends HyperfaceProgram {
     @ManyToOne
     Client client
 
-    enum DisableLevel{
-        DAILY,
-        WEEKLY,
-        MONTHLY,
-        LIFETIME,
-        MANUAL
-    }
     @OneToMany(mappedBy = "creditCardProgram")
     List<Offer> offers
+
+    @OneToMany(mappedBy = "creditCardProgram")
+    List<KycOption> kycOptions
+
 }
