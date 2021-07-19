@@ -1,0 +1,21 @@
+package hyperface.cms.model.enums
+
+enum CardDeliveryStatus {
+    PICKUP_ORDER_PLACED,
+    PICKUP_PENDING,
+    PICKUP_FAILED,
+    PICKED_UP,
+    INTRANSIT,
+    OUT_FOR_DELIVERY,
+    DELIVERED,
+    FAILED_DELIVERY,
+    CANCELLED_ORDER,
+    SHIPMENT_DELAYED,
+    LOST,
+    DAMAGED,
+    RTO,
+    RTO_INTRANSIT,
+    RTO_OUT_FOR_DELIVERY,
+    RTO_DELIVERED,
+    RTO_FAILED
+}
