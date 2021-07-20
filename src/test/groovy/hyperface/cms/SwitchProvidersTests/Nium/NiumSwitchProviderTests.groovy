@@ -5,6 +5,7 @@ import hyperface.cms.Utility.MockObjects
 import hyperface.cms.commands.CardBlockActionRequest
 import hyperface.cms.commands.CreateCardRequest
 import hyperface.cms.commands.SetCardPinRequest
+import hyperface.cms.config.SwitchProvidersConfig
 import hyperface.cms.domains.Card
 import hyperface.cms.domains.Customer
 import hyperface.cms.repository.CardProgramRepository
@@ -69,6 +70,9 @@ class NiumSwitchProviderTests {
     NiumSwitchProvider mockNiumSwitchProvider
 
     @Autowired
+    SwitchProvidersConfig switchProvidersConfig;
+
+    @Autowired
     NiumCustomerService niumCustomerService
 
     @Autowired
@@ -85,7 +89,7 @@ class NiumSwitchProviderTests {
 
     @Test
     void testNiumSwitchCreateCustomer(){
-        mockClient.expect(HttpMethod.POST, NiumSwitchProvider.niumUrl + niumCustomerService.createCustomerEndpoint)
+        mockClient.expect(HttpMethod.POST, switchProvidersConfig.niumUrl + niumCustomerService.createCustomerEndpoint)
                 .thenReturn(mockObject.mockCreateCustomerResponse())
         niumCustomerService.customerRepository = mockCustomerRepository
         Mockito.when(mockCustomerRepository.save(Mockito.any(Customer.class))).thenReturn(null)
@@ -98,7 +102,7 @@ class NiumSwitchProviderTests {
 
     @Test
     void testNiumSwitchCreateCustomerAsync(){
-        mockClient.expect(HttpMethod.POST, NiumSwitchProvider.niumUrl + niumCustomerService.createCustomerEndpoint)
+        mockClient.expect(HttpMethod.POST, switchProvidersConfig.niumUrl + niumCustomerService.createCustomerEndpoint)
                 .thenReturn(mockObject.mockCreateCustomerResponse())
         createCustomerCallback.customerRepository = mockCustomerRepository
         Mockito.when(mockCustomerRepository.save(Mockito.any(Customer.class))).thenReturn(null)

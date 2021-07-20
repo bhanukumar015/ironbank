@@ -58,14 +58,24 @@ class MockObjects {
     }
 
     public CreditCardProgram getTestCreditCardProgram(){
-        CreditCardProgram creditCardProgram = new CreditCardProgram()
-        creditCardProgram.id = '1'
-        creditCardProgram.annualizedPercentageRateInBps = 36
-        creditCardProgram.cardLogoId = '178'
-        creditCardProgram.cardPlasticId = '750065000'
-        creditCardProgram.baseCurrency = Constants.Currency.HKD
-        creditCardProgram.defaultDailyCashWithdrawalLimit = 100
-        creditCardProgram.defaultDailyTransactionLimit = 1000
+        CreditCardProgram creditCardProgram = new CreditCardProgram().tap {
+            annualizedPercentageRateInBps = 36
+            cardLogoId = '178'
+            cardPlasticId = '750065000'
+            baseCurrency = Constants.Currency.HKD
+            defaultDailyCashWithdrawalLimit = 100
+            defaultDailyTransactionLimit = 1000
+            isActive = true
+            disableLevel = null
+            currentDayAccountCount = 0
+            dailyAccountLimit = 100
+            currentWeekAccountCount = 0
+            weeklyAccountLimit = 500
+            currentMonthAccountCount = 0
+            monthlyAccountLimit = 1000
+            lifetimeAccountCount = 0
+            lifetimeAccountLimit = 10000
+        }
         return creditCardProgram
     }
 
