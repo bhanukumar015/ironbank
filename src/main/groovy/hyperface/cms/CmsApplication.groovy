@@ -9,6 +9,7 @@ import org.springframework.boot.autoconfigure.EnableAutoConfiguration
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean
+import org.springframework.data.jpa.repository.config.EnableJpaAuditing
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.scheduling.annotation.EnableAsync
 import org.springframework.scheduling.annotation.EnableScheduling
@@ -27,6 +28,7 @@ import javax.sql.DataSource
 @EnableScheduling
 @EnableSchedulerLock(defaultLockAtMostFor = "10m")
 @EnableAsync
+@EnableJpaAuditing
 @EnableTransactionManagement
 @EnableConfigurationProperties
 @ComponentScan(value = "hyperface.cms.*")

@@ -3,8 +3,8 @@ package hyperface.cms.domains
 import org.hibernate.annotations.GenericGenerator
 import org.springframework.data.annotation.CreatedDate
 import org.springframework.data.annotation.LastModifiedDate
+import org.springframework.data.jpa.domain.support.AuditingEntityListener
 
-import javax.persistence.CascadeType
 import javax.persistence.Column
 import javax.persistence.Entity
 import javax.persistence.EntityListeners
@@ -13,37 +13,25 @@ import javax.persistence.Id
 import javax.persistence.OneToOne
 import javax.validation.constraints.NotNull
 
-import org.springframework.data.jpa.domain.support.AuditingEntityListener
-
 @Entity
 @EntityListeners(AuditingEntityListener.class)
-class Client {
+class ClientKey {
     @Id
-    @GenericGenerator(name = "client_id", strategy = "hyperface.cms.util.UniqueIdGenerator")
-    @GeneratedValue(generator = "client_id")
+    @GenericGenerator(name = "client_key_id", strategy = "hyperface.cms.util.UniqueIdGenerator")
+    @GeneratedValue(generator = "client_key_id")
     String id
 
     @NotNull
-    @Column(nullable = false, unique = true)
-    String name
+    @Column(nullable = false)
+    String secretKey
 
-    String emailAddress
-
-    /** Uploaded image URL */
-    String logoUrl
-
-    /** Image data */
-    @Column(columnDefinition = "MEDIUMTEXT")
-    String logo
-
-    @OneToOne(mappedBy = "client", cascade = CascadeType.REMOVE)
-    ClientKey clientKey
+    @OneToOne
+    Client client
 
     @NotNull
     @CreatedDate
     @Column(nullable = false, updatable = false)
     Date createdAt
-
 
     @NotNull
     @LastModifiedDate
