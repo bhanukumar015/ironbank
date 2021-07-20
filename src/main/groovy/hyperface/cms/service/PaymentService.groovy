@@ -1,6 +1,7 @@
 package hyperface.cms.service
 
 import hyperface.cms.Constants
+import hyperface.cms.appdata.TxnNotEligible
 import hyperface.cms.commands.AuthorizationRequest
 import hyperface.cms.commands.CustomerTransactionRequest
 import hyperface.cms.commands.CustomerTransactionResponse
@@ -28,6 +29,7 @@ import hyperface.cms.repository.CustomerTxnRepository
 import hyperface.cms.repository.LedgerEntryRepository
 import hyperface.cms.repository.TransactionLedgerRepository
 import hyperface.cms.repository.batch.CurrencyConversionRepository
+import io.vavr.control.Either
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Autowired
@@ -64,26 +66,19 @@ class PaymentService {
     @Autowired
     private TransactionLedgerRepository transactionLedgerRepository
 
-    public Boolean checkTransactionEligibility(CustomerTransactionRequest req) {
-
-        if (req.card.hotlisted) {
-            String errorMessage = "Card with ID: [" + req.cardId + "] blocked permanently."
-            log.error("Error occurred while triggering transaction with the cardID : [{}]. Exception: [{}]", req.cardId, errorMessage)
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, errorMessage)
+    public Either<TxnNotEligible, Boolean> checkEligibility(CustomerTransactionRequest req) {
+        if(req.card.hotlisted) {
+            return Either.left(new TxnNotEligible(reason: "Card is blocked"))
         }
-
-        if (req.card.isLocked) {
-            String errorMessage = "Card with ID: [" + req.cardId + "] is locked."
-            log.error("Error occurred while triggering transaction with the cardID : [{}]. Exception: [{}]", req.cardId, errorMessage)
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, errorMessage)
+        else if (req.card.isLocked) {
+            return Either.left(new TxnNotEligible(reason: "Card is locked"))
         }
-        if (req.transactionCurrency != req.card.creditAccount.defaultCurrency && !req.card.enableOverseasTransactions){
-            String errorMessage = "International transactions are disabled for the card with ID: [" + req.cardId + "]"
-            log.error("Error occurred while triggering transaction with the cardID : [{}]. Exception: [{}]", req.cardId, errorMessage)
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, errorMessage)
+        else if(req.transactionCurrency != req.card.creditAccount.defaultCurrency && !req.card.enableOverseasTransactions) {
+            return Either.left(new TxnNotEligible(reason: "International transactions are disabled"))
         }
-return true
+        return Either.right(true)
     }
+
     public CustomerTransaction createCustomerTxn(CustomerTransactionRequest req) {
 
         Account account = req.card.creditAccount
