@@ -1,12 +1,14 @@
 package hyperface.cms.domains
 
 import hyperface.cms.Utility.MockObjects
+import hyperface.cms.appdata.TxnNotEligible
 import hyperface.cms.commands.CustomerTransactionRequest
 import hyperface.cms.repository.CardRepository
 import hyperface.cms.repository.CreditAccountRepository
 import hyperface.cms.repository.CustomerTransactionRepository
 import hyperface.cms.repository.SystemTransactionRepository
 import hyperface.cms.service.PaymentService
+import io.vavr.control.Either
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -45,10 +47,10 @@ class TransactionTest {
         CustomerTransactionRequest req = mockObjects.getTestCustomerDomesticTransactionResquest()
         Card card = cardRepository.findById(req.cardId).get()
         req.card = card
-        boolean eligibility = paymentService.checkTransactionEligibility(req)
-        CustomerTransaction txn = paymentService.createCustomerTxn(req)
-        Assertions.assertTrue(eligibility)
-        Assertions.assertTrue(txn.billingAmount == 1500)
+        Either<TxnNotEligible,Boolean> result = paymentService.checkEligibility(req)
+        Either<String,CustomerTransaction> txnResult = paymentService.createCustomerTxn(req)
+        Assertions.assertTrue(result.right().get())
+        Assertions.assertTrue(txnResult.right().get().billingAmount == 1500)
     }
 
     @Test
@@ -57,9 +59,9 @@ class TransactionTest {
         CustomerTransactionRequest req = mockObjects.getTestCustomerInternationalTransactionResquest()
         Card card = cardRepository.findById(req.cardId).get()
         req.card = card
-        boolean eligibility = paymentService.checkTransactionEligibility(req)
-        CustomerTransaction txn = paymentService.createCustomerTxn(req)
-        Assertions.assertTrue(eligibility)
-        Assertions.assertTrue(txn.billingAmount > 1170)
+        Either<TxnNotEligible,Boolean> result = paymentService.checkEligibility(req)
+        Either<String,CustomerTransaction> txnResult = paymentService.createCustomerTxn(req)
+        Assertions.assertTrue(result.right().get())
+        Assertions.assertTrue(txnResult.right().get().billingAmount >= 1170)
     }
 }

@@ -92,25 +92,30 @@ public class PaymentController {
             produces = MediaType.APPLICATION_JSON_VALUE)
 
     public ResponseEntity performTransaction(@Valid @RequestBody CustomerTransactionRequest req) {
-        Card card = cardRepository.findById(req.cardId).get()
-        if (card == null) { // this validation should ideally move to CustomerTransactionRequest
-            String errorMessage = "Card with ID ${req.cardId} does not exist."
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, errorMessage)
+        try {
+            Card card = cardRepository.findById(req.cardId).get()
+            req.card = card
+            Either<TxnNotEligible, Boolean> result = paymentService.checkEligibility(req)
+            if(result.isRight()) {
+                Either<String,CustomerTransaction> txnResult = paymentService.createCustomerTxn(req)
+                if (txnResult.isRight()) {
+                    returnSimpleJson(paymentService.getCustomerTransactionResponse(txnResult.right().get()))
+                } else {
+                    String reason = txnResult.left().get()
+                    log.error("Failing card transaction for ${req.cardId} because ${reason}")
+                    return returnError(reason)
+                }
+            }else {
+                String reason = result.left().get().reason
+                log.error("Failing card transaction for ${req.cardId} because ${reason}")
+                return returnError(reason)
+            }
+        } catch (NoSuchElementException e) {
+            String errorMessage = "Card not found"
+            log.error("Failing card transaction for ${req.cardId} because ${errorMessage}")
+            returnError(errorMessage)
         }
-        req.card = card
-        Either<TxnNotEligible, Boolean> result = paymentService.checkEligibility(req)
-        if(result.isRight()) {
-            return result
-                    .map({return paymentService.createCustomerTxn(req)})
-                    .map({return paymentService.getCustomerTransactionResponse(it)})
-                    .map({returnSimpleJson(it) })
-                    .get()
-        }
-        else {
-            String reason = result.left().get().reason
-            log.error("Failing card transaction for ${req.cardId} because ${reason}")
-            return returnError(reason)
-        }
+
     }
 
     private ResponseEntity returnSimpleJson(def resultObj) {

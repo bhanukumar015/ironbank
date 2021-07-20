@@ -1,7 +1,7 @@
 package hyperface.cms.SwitchProvidersTests.Nium
 
 import com.fasterxml.jackson.databind.ObjectMapper
-import hyperface.cms.SwitchProvidersTests.Utility.MockObjects
+import hyperface.cms.Utility.MockObjects
 import hyperface.cms.commands.CardBlockActionRequest
 import hyperface.cms.commands.CreateCardRequest
 import hyperface.cms.commands.SetCardPinRequest

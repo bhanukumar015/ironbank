@@ -79,13 +79,11 @@ class PaymentService {
         return Either.right(true)
     }
 
-    public CustomerTransaction createCustomerTxn(CustomerTransactionRequest req) {
+    public Either<String,CustomerTransaction> createCustomerTxn(CustomerTransactionRequest req) {
 
         Account account = req.card.creditAccount
         if (account == null) {
-            String errorMessage = "Account not found for the card with ID: [" + req.cardId + "]"
-            log.error("Error occurred while doing transaction with the accountId : [{}]. Exception: [{}]", req.card, errorMessage)
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, errorMessage)
+            return Either.left("Account not found")
         }
         CustomerTransaction txn = new CustomerTransaction()
         txn.card = req.card
@@ -106,9 +104,7 @@ class PaymentService {
             txn.billingCurrency = account.defaultCurrency
         }
         if (txn.billingAmount > account.availableCreditLimit) {
-            String errorMessage = "Account with ID: [" + account.id + "] has insufficient credit to fund this transaction"
-            log.error("Error occurred while doing transaction with the accountId : [{}]. Exception: [{}]", account.id, errorMessage)
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, errorMessage)
+            return Either.left("Insufficient balance")
         }
         txn.txnStatus = TransactionStatus.NOT_APPLICABLE
         txn.mid = req.merchantTerminalId
@@ -129,7 +125,7 @@ class PaymentService {
                 createCreditEntry(txn)
                 break
         }
-        return txn
+        return Either.right(txn)
     }
 
     public CustomerTransactionResponse getCustomerTransactionResponse(CustomerTransaction txn) {
