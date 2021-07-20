@@ -2,7 +2,7 @@ package hyperface.cms.commands
 
 import hyperface.cms.domains.Card
 import hyperface.cms.model.enums.TransactionType
-import hyperface.cms.util.validation.PositiveInteger
+
 import hyperface.cms.util.validation.PositiveValue
 import hyperface.cms.util.validation.StringEnumeration
 

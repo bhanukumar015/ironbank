@@ -1,14 +1,22 @@
 package hyperface.cms
 
 import hyperface.cms.Constants.TxnType
+import hyperface.cms.Utility.MockObjects
+import hyperface.cms.appdata.TxnNotEligible
+import hyperface.cms.commands.CustomerTransactionRequest
+import hyperface.cms.commands.GenericErrorResponse
 import hyperface.cms.domains.Card
 import hyperface.cms.domains.CreditCardProgram
 import hyperface.cms.domains.CreditCardScheduleOfCharges
+import hyperface.cms.domains.CustomerTransaction
 import hyperface.cms.domains.CustomerTxn
 import hyperface.cms.domains.interest.Condition
 import hyperface.cms.domains.interest.InterestCriteria
 import hyperface.cms.domains.ledger.LedgerEntry
+import hyperface.cms.repository.CardRepository
 import hyperface.cms.service.PaymentService
+import io.vavr.control.Either
+import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
@@ -22,6 +30,9 @@ class PaymentServiceTests {
 
 	@Autowired
 	PaymentService paymentService
+
+	@Autowired
+	CardRepository cardRepository
 
 	Integer annualizedPercentageRateInBps = 4500
 	int feeApr = 4000
@@ -86,5 +97,29 @@ class PaymentServiceTests {
 		// logic
 		assert paymentService.getInterestRateForTxn(feeEntry) == feeApr
 		assert paymentService.getInterestRateForTxn(purchaseEntry) == annualizedPercentageRateInBps
+	}
+
+	@Test
+	void testDomesticTransaction() {
+		MockObjects mockObjects = new MockObjects()
+		CustomerTransactionRequest req = mockObjects.getTestCustomerDomesticTransactionResquest()
+		Card card = cardRepository.findById(req.cardId).get()
+		req.card = card
+		Either<TxnNotEligible,Boolean> result = paymentService.checkEligibility(req)
+		Either<GenericErrorResponse, CustomerTransaction> txnResult = paymentService.createCustomerTxn(req)
+		Assertions.assertTrue(result.right().get())
+		Assertions.assertTrue(txnResult.right().get().billingAmount == 1500)
+	}
+
+	@Test
+	void testInternationalTransaction() {
+		MockObjects mockObjects = new MockObjects()
+		CustomerTransactionRequest req = mockObjects.getTestCustomerInternationalTransactionResquest()
+		Card card = cardRepository.findById(req.cardId).get()
+		req.card = card
+		Either<TxnNotEligible,Boolean> result = paymentService.checkEligibility(req)
+		Either<GenericErrorResponse,CustomerTransaction> txnResult = paymentService.createCustomerTxn(req)
+		Assertions.assertTrue(result.right().get())
+		Assertions.assertTrue(txnResult.right().get().billingAmount >= 1170)
 	}
 }
