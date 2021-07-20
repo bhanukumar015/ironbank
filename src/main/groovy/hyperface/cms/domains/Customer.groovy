@@ -1,13 +1,14 @@
 package hyperface.cms.domains
 
 import hyperface.cms.domains.converters.SimpleJsonConverter
+import hyperface.cms.domains.kyc.CustomerKycDetail
 import org.hibernate.annotations.GenericGenerator
 
-import javax.persistence.Column
 import javax.persistence.Convert
 import javax.persistence.Entity
 import javax.persistence.GeneratedValue
 import javax.persistence.Id
+import javax.persistence.JoinColumn
 import javax.persistence.ManyToOne
 import javax.persistence.OneToMany
 
@@ -39,5 +40,9 @@ class Customer {
 
     @ManyToOne
     Client client
+
+    @OneToMany
+    @JoinColumn(name = "hyperfaceCustomerId", referencedColumnName = "id")
+    private List<CustomerKycDetail> customerKycDetails
 
 }

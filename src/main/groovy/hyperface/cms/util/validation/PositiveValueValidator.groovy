@@ -3,10 +3,10 @@ package hyperface.cms.util.validation
 import javax.validation.ConstraintValidator
 import javax.validation.ConstraintValidatorContext
 
-class PositiveIntegerValidator implements ConstraintValidator<PositiveInteger, Integer> {
+class PositiveValueValidator implements ConstraintValidator <PositiveValue, Double> {
 
     @Override
-    boolean isValid(Integer value, ConstraintValidatorContext context) {
+    boolean isValid(Double value, ConstraintValidatorContext context) {
         if (value == null) {
             return false
         }

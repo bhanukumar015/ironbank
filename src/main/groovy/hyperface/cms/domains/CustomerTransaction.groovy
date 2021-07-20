@@ -15,6 +15,7 @@ class CustomerTransaction extends Transaction {
 
     CustomerTransaction() {
         this.setTxnSourceIndicator(TransactionSourceIndicator.CUSTOMER_INITIATED)
+        this.setSovereigntyIndicator(SovereigntyIndicator.DOMESTIC)
     }
 
     Double pendingTxnAmount

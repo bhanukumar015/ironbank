@@ -1,9 +1,10 @@
-package hyperface.cms.SwitchProvidersTests.Utility
+package hyperface.cms.Utility
 
 import hyperface.cms.Constants
 import hyperface.cms.commands.CardChannelControlsRequest
 import hyperface.cms.commands.CardLimitsRequest
 import hyperface.cms.commands.CreateCardRequest
+import hyperface.cms.commands.CustomerTransactionRequest
 import hyperface.cms.domains.Address
 import hyperface.cms.domains.Card
 import hyperface.cms.domains.CreditAccount
@@ -331,5 +332,31 @@ class MockObjects {
                 .put('status', 'BAD_REQUEST')
                 .put('errors', ["Card already activated!"])
         return response.toString()
+    }
+
+    public CustomerTransactionRequest getTestCustomerDomesticTransactionResquest() {
+        return new CustomerTransactionRequest()
+            .tap {
+                cardId = "card_j3rMwLlbL5uAftf2"
+                transactionAmount = 1500.00
+                transactionCurrency = "INR"
+                transactionDescription = "Sample Txn 1"
+                merchantCategoryCode = "120"
+                merchantTerminalId = "123"
+                transactionType = "SETTLEMENT_CREDIT"
+            }
+    }
+
+    public CustomerTransactionRequest getTestCustomerInternationalTransactionResquest() {
+        return new CustomerTransactionRequest()
+            .tap {
+                cardId = "card_j3rMwLlbL5uAftf2"
+                transactionAmount = 15.00
+                transactionCurrency = "USD"
+                transactionDescription = "Sample Txn 2"
+                merchantCategoryCode = "120"
+                merchantTerminalId = "123"
+                transactionType = "SETTLEMENT_DEBIT"
+            }
     }
 }

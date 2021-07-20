@@ -6,5 +6,4 @@ import org.springframework.stereotype.Repository
 
 @Repository
 interface CustomerTransactionRepository extends TransactionRepository<CustomerTransaction>, CrudRepository<CustomerTransaction, String> {
-
 }

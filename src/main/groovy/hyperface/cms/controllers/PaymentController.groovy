@@ -1,31 +1,37 @@
 package hyperface.cms.controllers
 
+import groovy.util.logging.Slf4j
 import hyperface.cms.Constants
+import hyperface.cms.appdata.TxnNotEligible
 import hyperface.cms.commands.AuthorizationRequest
-import hyperface.cms.commands.CreateCardRequest
-import hyperface.cms.commands.CreateCreditAccountRequest
+import hyperface.cms.commands.CustomerTransactionRequest
+import hyperface.cms.commands.CustomerTransactionResponse
+import hyperface.cms.commands.GenericErrorResponse
 import hyperface.cms.commands.RejectTxnResponse
 import hyperface.cms.domains.Card
-import hyperface.cms.domains.CreditCardProgram
-import hyperface.cms.domains.CreditAccount
-import hyperface.cms.domains.Customer
+import hyperface.cms.domains.CustomerTransaction
 import hyperface.cms.domains.CustomerTxn
-import hyperface.cms.repository.CardProgramRepository
 import hyperface.cms.repository.CardRepository
 import hyperface.cms.repository.CreditAccountRepository
-import hyperface.cms.repository.CustomerRepository
-import hyperface.cms.service.AccountService
 import hyperface.cms.service.AuthorizationManager
 import hyperface.cms.service.PaymentService
+import io.vavr.control.Either
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
+import org.springframework.http.ResponseEntity
+import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestMethod
 import org.springframework.web.bind.annotation.ResponseBody
 import org.springframework.web.bind.annotation.RestController
+import org.springframework.web.server.ResponseStatusException
+
+import javax.validation.Valid
 
 @RestController
 @RequestMapping("/payments")
+@Slf4j
 public class PaymentController {
 
     @Autowired
@@ -36,6 +42,9 @@ public class PaymentController {
 
     @Autowired
     AuthorizationManager authorizationManager
+
+    @Autowired
+    CreditAccountRepository creditAccountRepository
 
     @RequestMapping(value = "/authorize", method = RequestMethod.POST,
                     consumes = MediaType.APPLICATION_FORM_URLENCODED_VALUE,
@@ -76,5 +85,48 @@ public class PaymentController {
             CustomerTxn txn = paymentService.processAuthorization(req)
             return ["responseCode": "00", "partnerReferenceNumber": txn.id.toString()]
         }
+    }
+
+    @RequestMapping(value = "/transaction", method = RequestMethod.POST,
+            consumes = MediaType.APPLICATION_JSON_VALUE,
+            produces = MediaType.APPLICATION_JSON_VALUE)
+
+    public ResponseEntity performTransaction(@Valid @RequestBody CustomerTransactionRequest req) {
+        Optional<Card> card = cardRepository.findById(req.cardId)
+        if ( !card.isPresent()) {
+            String errorMessage = "Card not found"
+            log.error("Failing card transaction for ${req.cardId} because ${errorMessage}")
+            return returnError(errorMessage)
+        }
+        req.card = card.get()
+        Either<TxnNotEligible, Boolean> result = paymentService.checkEligibility(req)
+        if(result.isRight()) {
+            Either<GenericErrorResponse,CustomerTransaction> txnResult = paymentService.createCustomerTxn(req)
+            if (txnResult.isRight()) {
+                return returnSimpleJson(paymentService.getCustomerTransactionResponse(txnResult.right().get()))
+            } else {
+                String reason = txnResult.left().get().reason
+                log.error("Failing card transaction for ${req.cardId} because ${reason}")
+                return returnError(reason)
+            }
+        }else {
+            String reason = result.left().get().reason
+            log.error("Failing card transaction for ${req.cardId} because ${reason}")
+            return returnError(reason)
+        }
+
+    }
+
+    private ResponseEntity returnSimpleJson(def resultObj) {
+        return ResponseEntity
+                .ok()
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(resultObj)
+    }
+
+    private ResponseEntity returnError(String errorMessage) {
+        return ResponseEntity.badRequest()
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(new GenericErrorResponse(reason: errorMessage))
     }
 }
