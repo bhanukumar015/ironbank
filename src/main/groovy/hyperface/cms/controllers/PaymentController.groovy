@@ -1,9 +1,12 @@
 package hyperface.cms.controllers
 
+import groovy.util.logging.Slf4j
 import hyperface.cms.Constants
+import hyperface.cms.appdata.TxnNotEligible
 import hyperface.cms.commands.AuthorizationRequest
 import hyperface.cms.commands.CustomerTransactionRequest
 import hyperface.cms.commands.CustomerTransactionResponse
+import hyperface.cms.commands.GenericErrorResponse
 import hyperface.cms.commands.RejectTxnResponse
 import hyperface.cms.domains.Card
 import hyperface.cms.domains.CustomerTransaction
@@ -12,6 +15,7 @@ import hyperface.cms.repository.CardRepository
 import hyperface.cms.repository.CreditAccountRepository
 import hyperface.cms.service.AuthorizationManager
 import hyperface.cms.service.PaymentService
+import io.vavr.control.Either
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
@@ -25,6 +29,7 @@ import org.springframework.web.server.ResponseStatusException
 
 @RestController
 @RequestMapping("/payments")
+@Slf4j
 public class PaymentController {
 
     @Autowired
@@ -83,20 +88,38 @@ public class PaymentController {
     @RequestMapping(value = "/performTransaction", method = RequestMethod.POST,
             consumes = MediaType.APPLICATION_JSON_VALUE,
             produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<CustomerTransactionResponse> performTransaction(@RequestBody CustomerTransactionRequest req) {
-
+    public ResponseEntity performTransaction(@RequestBody CustomerTransactionRequest req) {
         Card card = cardRepository.findById(req.cardId).get()
-        if (card == null) {
-            String errorMessage = "Card with ID: [" + req.cardId + "] does not exist."
+        if (card == null) { // this validation should ideally move to CustomerTransactionRequest
+            String errorMessage = "Card with ID ${req.cardId} does not exist."
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, errorMessage)
         }
         req.card = card
-        CustomerTransaction txn
-        if ( paymentService.checkTransactionEligibility(req) )
-            txn = paymentService.createCustomerTxn(req)
+        Either<TxnNotEligible, Boolean> result = paymentService.checkEligibility(req)
+        if(result.isRight()) {
+            return result
+                    .map({return paymentService.createCustomerTxn(req)})
+                    .map({return paymentService.getCustomerTransactionResponse(it)})
+                    .map({returnSimpleJson(it) })
+                    .get()
+        }
+        else {
+            String reason = result.left().get().reason
+            log.error("Failing card transaction for ${req.cardId} because ${reason}")
+            return returnError(reason)
+        }
+    }
+
+    private ResponseEntity returnSimpleJson(def resultObj) {
         return ResponseEntity
                 .ok()
                 .contentType(MediaType.APPLICATION_JSON)
-                .body(paymentService.getCustomerTransactionResponse(txn))
+                .body(resultObj)
+    }
+
+    private ResponseEntity returnError(String errorMessage) {
+        return ResponseEntity.badRequest()
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(new GenericErrorResponse(reason: errorMessage))
     }
 }
