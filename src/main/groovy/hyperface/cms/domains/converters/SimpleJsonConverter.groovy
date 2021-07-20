@@ -29,7 +29,7 @@ class SimpleJsonConverter implements AttributeConverter<Object, String> {
     @Override
     Object convertToEntityAttribute(String dbData) {
         log.info "Converting from DB:" + dbData
-        if(dbData == "{}") { return null }
+        if(dbData == "{}" || dbData == null) { return null }
         return objectMapper.readValue(dbData, Object.class);
     }
 }

@@ -1,6 +1,6 @@
 package hyperface.cms
 
-import hyperface.cms.SwitchProvidersTests.Utility.MockObjects
+import hyperface.cms.Utility.MockObjects
 import hyperface.cms.domains.CreditCardProgram
 import hyperface.cms.repository.CardProgramRepository
 import hyperface.cms.service.AccountService

@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 
+
 @SpringBootTest
 class TransactionTest {
     @Autowired
@@ -24,4 +25,5 @@ class TransactionTest {
             Assertions.fail("Exception should not occur. Table: [transaction] must be present in DB.")
         }
     }
+
 }
