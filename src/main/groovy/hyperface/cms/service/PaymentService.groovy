@@ -50,7 +50,7 @@ class PaymentService {
     private CreditAccountRepository creditAccountRepository
 
     @Autowired
-    public CardRepository cardRepository
+    CardRepository cardRepository
 
     @Autowired
     private CustomerTxnRepository customerTxnRepository
@@ -69,18 +69,18 @@ class PaymentService {
         if (req.card.hotlisted) {
             String errorMessage = "Card with ID: [" + req.cardId + "] blocked permanently."
             log.error("Error occurred while triggering transaction with the cardID : [{}]. Exception: [{}]", req.cardId, errorMessage)
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, errorMessage)
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, errorMessage)
         }
 
         if (req.card.isLocked) {
             String errorMessage = "Card with ID: [" + req.cardId + "] is locked."
             log.error("Error occurred while triggering transaction with the cardID : [{}]. Exception: [{}]", req.cardId, errorMessage)
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, errorMessage)
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, errorMessage)
         }
         if (req.transactionCurrency != req.card.creditAccount.defaultCurrency && !req.card.enableOverseasTransactions){
-            String errorMessage = "Card with ID: [" + req.cardId + "] international transaction are disabled"
+            String errorMessage = "International transactions are disabled for the card with ID: [" + req.cardId + "]"
             log.error("Error occurred while triggering transaction with the cardID : [{}]. Exception: [{}]", req.cardId, errorMessage)
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, errorMessage)
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, errorMessage)
         }
 return true
     }
@@ -88,7 +88,7 @@ return true
 
         Account account = req.card.creditAccount
         if (account == null) {
-            String errorMessage = "Card with ID: [" + req.card + "] account not found"
+            String errorMessage = "Account not found for the card with ID: [" + req.cardId + "]"
             log.error("Error occurred while doing transaction with the accountId : [{}]. Exception: [{}]", req.card, errorMessage)
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, errorMessage)
         }
@@ -107,13 +107,12 @@ return true
             CurrencyConversion currencyConversion =
                     currencyConversionRepository.findBySourceCurrencyAndDestinationCurrency(
                             req.transactionCurrency, account.defaultCurrency)
-            println currencyConversion.conversionRate
             txn.billingAmount = req.transactionAmount * currencyConversion.conversionRate
             txn.billingCurrency = account.defaultCurrency
         }
         if (txn.billingAmount > account.availableCreditLimit) {
-            String errorMessage = "Account with ID: [" + req.card.creditAccount.id + "] insufficient balance"
-            log.error("Error occurred while doing transaction with the accountId : [{}]. Exception: [{}]", req.card.creditAccount.id, errorMessage)
+            String errorMessage = "Account with ID: [" + account.id + "] has insufficient credit to fund this transaction"
+            log.error("Error occurred while doing transaction with the accountId : [{}]. Exception: [{}]", account.id, errorMessage)
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, errorMessage)
         }
         txn.txnStatus = TransactionStatus.NOT_APPLICABLE
@@ -135,7 +134,6 @@ return true
                 createCreditEntry(txn)
                 break
         }
-        println txn.dump()
         return txn
     }
 

@@ -23,6 +23,8 @@ import org.springframework.web.bind.annotation.ResponseBody
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.server.ResponseStatusException
 
+import javax.validation.Valid
+
 @RestController
 @RequestMapping("/payments")
 public class PaymentController {
@@ -80,13 +82,14 @@ public class PaymentController {
         }
     }
 
-    @RequestMapping(value = "/performTransaction", method = RequestMethod.POST,
+    @RequestMapping(value = "/transaction", method = RequestMethod.POST,
             consumes = MediaType.APPLICATION_JSON_VALUE,
             produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<CustomerTransactionResponse> performTransaction(@RequestBody CustomerTransactionRequest req) {
-
-        Card card = cardRepository.findById(req.cardId).get()
-        if (card == null) {
+    public ResponseEntity<CustomerTransactionResponse> performTransaction(@Valid @RequestBody CustomerTransactionRequest req) {
+        Card card
+        try {
+            card = cardRepository.findById(req.cardId).get()
+        } catch (NoSuchElementException e) {
             String errorMessage = "Card with ID: [" + req.cardId + "] does not exist."
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, errorMessage)
         }
