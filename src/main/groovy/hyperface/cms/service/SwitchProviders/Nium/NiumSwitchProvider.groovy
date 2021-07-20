@@ -1,5 +1,7 @@
 package hyperface.cms.service.SwitchProviders.Nium
 
+import groovy.util.logging.Slf4j
+import hyperface.cms.config.SwitchProvidersConfig
 import hyperface.cms.repository.CustomerRepository
 import hyperface.cms.service.SwitchProviders.Nium.CustomerManagement.NiumCreateCustomerCallback
 import hyperface.cms.service.SwitchProviders.Nium.Utility.NiumObjectsCreation
@@ -8,12 +10,12 @@ import kong.unirest.HttpResponse
 import kong.unirest.JsonNode
 import kong.unirest.Unirest
 import kong.unirest.UnirestException
-import org.slf4j.Logger
-import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.http.HttpHeaders
 import org.springframework.stereotype.Service
 
 @Service
+@Slf4j
 class NiumSwitchProvider {
 
     @Autowired
@@ -25,16 +27,12 @@ class NiumSwitchProvider {
     @Autowired
     NiumObjectsCreation niumObjectsCreation
 
-    // TODO: remove hardcoding from code. Read from config file?
-    private static final String apiKey = 'LnqHbp0r0S4rBQE53FHWW8k1nIHgfRQb4iJk1glR'
-    private static final String clientName = 'Hyperface'
-    private Logger log = LoggerFactory.getLogger(NiumSwitchProvider.class)
-
-    public static final String niumUrl = 'http://niumproxy.hyperface.in/api/v1/client/c8fbf2b7-1b3e-47a6-9ce2-86539d05d956/'
+    @Autowired
+    SwitchProvidersConfig switchProvidersConfig
 
     public void executeHttpPostRequestAsync(String endpoint, String requestBody, Callback<JsonNode> callback){
         try{
-            Unirest.post(niumUrl + endpoint)
+            Unirest.post(switchProvidersConfig.getNiumUrl() + endpoint)
                     .headers(getHeaders())
                     .body(requestBody)
                     .asJsonAsync(callback)
@@ -48,7 +46,7 @@ class NiumSwitchProvider {
     public String executeHttpPostRequestSync(String endpoint, String requestBody, int retries){
         try{
             String retryResponse = null
-            HttpResponse<JsonNode> response = Unirest.post(niumUrl + endpoint)
+            HttpResponse<JsonNode> response = Unirest.post(switchProvidersConfig.getNiumUrl() + endpoint)
                     .headers(getHeaders())
                     .body(requestBody)
                     .asJson()
@@ -82,11 +80,11 @@ class NiumSwitchProvider {
         }
     }
 
-    private Map<String,String> getHeaders(){
+    Map<String,String> getHeaders(){
         Map<String,String> headers = new HashMap<>()
-        headers.put('x-api-key', apiKey)
-        headers.put('x-client-name', clientName)
-        headers.put('Content-Type', 'application/json')
+        headers.put('x-api-key', switchProvidersConfig.niumAPIKey)
+        headers.put('x-client-name', switchProvidersConfig.niumClientName)
+        headers.put(HttpHeaders.CONTENT_TYPE, 'application/json')
         headers.put('x-request-id', UUID.randomUUID().toString())
         return headers
     }
