@@ -92,9 +92,13 @@ public class PaymentController {
             produces = MediaType.APPLICATION_JSON_VALUE)
 
     public ResponseEntity performTransaction(@Valid @RequestBody CustomerTransactionRequest req) {
-        try {
-            Card card = cardRepository.findById(req.cardId).get()
-            req.card = card
+        Optional<Card> card = cardRepository.findById(req.cardId)
+        if ( !card.isPresent()) {
+            String errorMessage = "Card not found"
+            log.error("Failing card transaction for ${req.cardId} because ${errorMessage}")
+            returnError(errorMessage)
+        }else {
+            req.card = card.get()
             Either<TxnNotEligible, Boolean> result = paymentService.checkEligibility(req)
             if(result.isRight()) {
                 Either<String,CustomerTransaction> txnResult = paymentService.createCustomerTxn(req)
@@ -110,12 +114,7 @@ public class PaymentController {
                 log.error("Failing card transaction for ${req.cardId} because ${reason}")
                 return returnError(reason)
             }
-        } catch (NoSuchElementException e) {
-            String errorMessage = "Card not found"
-            log.error("Failing card transaction for ${req.cardId} because ${errorMessage}")
-            returnError(errorMessage)
         }
-
     }
 
     private ResponseEntity returnSimpleJson(def resultObj) {
