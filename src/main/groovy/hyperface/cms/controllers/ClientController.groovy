@@ -35,8 +35,8 @@ class ClientController {
     @Autowired
     ClientService clientService
 
-    @RequestMapping(value = "/create", method = RequestMethod.POST, consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    Client createOrSave(Client client, @RequestParam(name = "inputFile", required = false) MultipartFile multipartFile) throws IOException {
+    @RequestMapping(value = "", method = RequestMethod.POST, consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    ResponseEntity<Client> createOrSave(Client client, @RequestParam(name = "logoFile", required = false) MultipartFile multipartFile) throws IOException {
         if (ObjectUtils.isNotEmpty(multipartFile)) {
             String logo = Utilities.convertFileToBase64String(multipartFile)
             client.setLogo(logo)
@@ -45,25 +45,26 @@ class ClientController {
 
         ClientKey clientKey = clientService.createClientKey(client)
         clientKeyRepository.save(clientKey)
-        return client
+        return ResponseEntity.ok(client)
     }
 
-    @RequestMapping(value = "/get/{clientId}", method = RequestMethod.GET)
-    Client get(@PathVariable(name = "clientId") String clientId) {
+    @RequestMapping(value = "/{clientId}", method = RequestMethod.GET)
+    ResponseEntity<Client> get(@PathVariable(name = "clientId") String clientId) {
         Optional<Client> client = clientRepository.findById(clientId)
         if (!client.isPresent()) {
             String errorMessage = "Client record with id: ${clientId} is not found"
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, errorMessage)
         }
-        return client.get()
+        return ResponseEntity.status(HttpStatus.OK).body(client.get())
     }
 
-    @RequestMapping(value = "/update/{clientId}", method = RequestMethod.POST, consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    ResponseEntity<Client> update(Client client, @PathVariable(name = "clientId") String clientId, @RequestParam(name = "inputFile", required = false) MultipartFile multipartFile) throws IOException {
+    @RequestMapping(value = "/{clientId}", method = RequestMethod.POST, consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    ResponseEntity update(Client client, @PathVariable(name = "clientId") String clientId, @RequestParam(name = "logoFile", required = false) MultipartFile multipartFile) throws IOException {
         Optional<Client> clientOptional = clientRepository.findById(clientId)
         if (!clientOptional.isPresent()) {
-            log.error("Client record with id: ${clientId} is not found")
-            return ResponseEntity.notFound().build()
+            String errorMessage = "Client record with id: ${clientId} is not found"
+            log.error(errorMessage)
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorMessage)
         }
 
         Client existingClient = clientOptional.get()
@@ -82,10 +83,8 @@ class ClientController {
         return ResponseEntity.noContent().build()
     }
 
-    @RequestMapping(value = "/delete/{clientId}", method = RequestMethod.POST)
+    @RequestMapping(value = "/{clientId}", method = RequestMethod.DELETE)
     void delete(@PathVariable(name = "clientId") String clientId) {
-        ClientKey clientKey = clientKeyRepository.findByClientId(clientId)
-        clientKeyRepository.delete(clientKey)
-        clientRepository.deleteById(clientId)
+        clientService.removeClient(clientId)
     }
 }

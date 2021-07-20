@@ -94,9 +94,9 @@ class Constants {
 
     public final static Integer RANDOM_KEY_GENERATOR_LENGTH = 16
 
-    public static final long MAX_IMAGE_FILE_SIZE = 800 //Kilo Bytes
+    public static final long MAX_IMAGE_FILE_SIZE_IN_KB = 800
     public static final List<String> MIME_TYPES = ['image/jpg', 'image/jpeg', 'image/png']
 
     /* URL Constants */
-    public static final String PATH_CLIENT_BASE_URL = "/clients"
+    public static final String PATH_CLIENT_BASE_URL = "/client"
 }
