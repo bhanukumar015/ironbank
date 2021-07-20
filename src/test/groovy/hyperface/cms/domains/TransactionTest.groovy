@@ -3,6 +3,7 @@ package hyperface.cms.domains
 import hyperface.cms.Utility.MockObjects
 import hyperface.cms.appdata.TxnNotEligible
 import hyperface.cms.commands.CustomerTransactionRequest
+import hyperface.cms.commands.GenericErrorResponse
 import hyperface.cms.repository.CardRepository
 import hyperface.cms.repository.CreditAccountRepository
 import hyperface.cms.repository.CustomerTransactionRepository
@@ -13,6 +14,8 @@ import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
+
+import java.awt.geom.GeneralPath
 
 @SpringBootTest
 class TransactionTest {
@@ -48,7 +51,7 @@ class TransactionTest {
         Card card = cardRepository.findById(req.cardId).get()
         req.card = card
         Either<TxnNotEligible,Boolean> result = paymentService.checkEligibility(req)
-        Either<String,CustomerTransaction> txnResult = paymentService.createCustomerTxn(req)
+        Either<GenericErrorResponse,CustomerTransaction> txnResult = paymentService.createCustomerTxn(req)
         Assertions.assertTrue(result.right().get())
         Assertions.assertTrue(txnResult.right().get().billingAmount == 1500)
     }
@@ -60,7 +63,7 @@ class TransactionTest {
         Card card = cardRepository.findById(req.cardId).get()
         req.card = card
         Either<TxnNotEligible,Boolean> result = paymentService.checkEligibility(req)
-        Either<String,CustomerTransaction> txnResult = paymentService.createCustomerTxn(req)
+        Either<GenericErrorResponse,CustomerTransaction> txnResult = paymentService.createCustomerTxn(req)
         Assertions.assertTrue(result.right().get())
         Assertions.assertTrue(txnResult.right().get().billingAmount >= 1170)
     }

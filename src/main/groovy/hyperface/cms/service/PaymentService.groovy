@@ -5,6 +5,7 @@ import hyperface.cms.appdata.TxnNotEligible
 import hyperface.cms.commands.AuthorizationRequest
 import hyperface.cms.commands.CustomerTransactionRequest
 import hyperface.cms.commands.CustomerTransactionResponse
+import hyperface.cms.commands.GenericErrorResponse
 import hyperface.cms.commands.SettlementRequest
 import hyperface.cms.domains.Account
 import hyperface.cms.domains.Card
@@ -79,11 +80,11 @@ class PaymentService {
         return Either.right(true)
     }
 
-    public Either<String,CustomerTransaction> createCustomerTxn(CustomerTransactionRequest req) {
+    public Either<GenericErrorResponse,CustomerTransaction> createCustomerTxn(CustomerTransactionRequest req) {
 
         Account account = req.card.creditAccount
         if (account == null) {
-            return Either.left("Account not found")
+            return Either.left(new GenericErrorResponse(reason:  "Account not found"))
         }
         CustomerTransaction txn = new CustomerTransaction()
         txn.card = req.card
@@ -104,7 +105,7 @@ class PaymentService {
             txn.billingCurrency = account.defaultCurrency
         }
         if (txn.billingAmount > account.availableCreditLimit) {
-            return Either.left("Insufficient balance")
+            return Either.left(new GenericErrorResponse(reason:  "Insufficient balance"))
         }
         txn.txnStatus = TransactionStatus.NOT_APPLICABLE
         txn.mid = req.merchantTerminalId

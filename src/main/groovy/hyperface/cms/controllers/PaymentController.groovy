@@ -96,25 +96,25 @@ public class PaymentController {
         if ( !card.isPresent()) {
             String errorMessage = "Card not found"
             log.error("Failing card transaction for ${req.cardId} because ${errorMessage}")
-            returnError(errorMessage)
-        }else {
-            req.card = card.get()
-            Either<TxnNotEligible, Boolean> result = paymentService.checkEligibility(req)
-            if(result.isRight()) {
-                Either<String,CustomerTransaction> txnResult = paymentService.createCustomerTxn(req)
-                if (txnResult.isRight()) {
-                    returnSimpleJson(paymentService.getCustomerTransactionResponse(txnResult.right().get()))
-                } else {
-                    String reason = txnResult.left().get()
-                    log.error("Failing card transaction for ${req.cardId} because ${reason}")
-                    return returnError(reason)
-                }
-            }else {
-                String reason = result.left().get().reason
+            return returnError(errorMessage)
+        }
+        req.card = card.get()
+        Either<TxnNotEligible, Boolean> result = paymentService.checkEligibility(req)
+        if(result.isRight()) {
+            Either<GenericErrorResponse,CustomerTransaction> txnResult = paymentService.createCustomerTxn(req)
+            if (txnResult.isRight()) {
+                return returnSimpleJson(paymentService.getCustomerTransactionResponse(txnResult.right().get()))
+            } else {
+                String reason = txnResult.left().get().reason
                 log.error("Failing card transaction for ${req.cardId} because ${reason}")
                 return returnError(reason)
             }
+        }else {
+            String reason = result.left().get().reason
+            log.error("Failing card transaction for ${req.cardId} because ${reason}")
+            return returnError(reason)
         }
+
     }
 
     private ResponseEntity returnSimpleJson(def resultObj) {
