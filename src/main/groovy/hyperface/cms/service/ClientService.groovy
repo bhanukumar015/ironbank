@@ -14,7 +14,6 @@ import javax.transaction.Transactional
 
 @Service
 @Slf4j
-@Transactional
 class ClientService {
 
     @Autowired
@@ -29,11 +28,5 @@ class ClientService {
         clientKey.secretKey = "secret_" + Utilities.generateUniqueReference(Constants.RANDOM_KEY_GENERATOR_LENGTH)
         clientKey.client = client
         return clientKey
-    }
-
-    void removeClient(String clientId) {
-        ClientKey clientKey = clientKeyRepository.findByClientId(clientId)
-        clientKeyRepository.delete(clientKey)
-        clientRepository.deleteById(clientId)
     }
 }

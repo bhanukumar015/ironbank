@@ -85,6 +85,6 @@ class ClientController {
 
     @RequestMapping(value = "/{clientId}", method = RequestMethod.DELETE)
     void delete(@PathVariable(name = "clientId") String clientId) {
-        clientService.removeClient(clientId)
+        clientRepository.deleteById(clientId)
     }
 }
