@@ -1,36 +1,32 @@
 package hyperface.cms.controllers
 
-import hyperface.cms.commands.SettlementRequest
+import hyperface.cms.appdata.TxnNotEligible
+import hyperface.cms.commands.AuthSettlementRequest
+import hyperface.cms.commands.GenericErrorResponse
 import hyperface.cms.domains.*
-import hyperface.cms.repository.CardProgramRepository
 import hyperface.cms.repository.CardRepository
-import hyperface.cms.repository.CreditAccountRepository
-import hyperface.cms.repository.CustomerRepository
-import hyperface.cms.service.AccountService
 import hyperface.cms.service.AuthorizationManager
 import hyperface.cms.service.PaymentService
+import hyperface.cms.util.Response
+import io.vavr.control.Either
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.MediaType
+import org.springframework.http.ResponseEntity
+import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestMethod
 import org.springframework.web.bind.annotation.ResponseBody
 import org.springframework.web.bind.annotation.RestController
 
+import javax.validation.Valid
+
 @RestController
 @RequestMapping("/settlements")
 public class SettlementController {
 
-    @Autowired
-    CustomerRepository customerRepository
-
-    @Autowired
-    CreditAccountRepository creditAccountRepository
-
-    @Autowired
-    CardProgramRepository cardProgramRepository
-
-    @Autowired
-    AccountService accountService
+    Logger log = LoggerFactory.getLogger(SettlementController.class);
 
     @Autowired
     PaymentService paymentService
@@ -42,28 +38,60 @@ public class SettlementController {
     AuthorizationManager authorizationManager
 
     @RequestMapping(value = "/settlement-debit", method = RequestMethod.POST,
-                    consumes = MediaType.APPLICATION_FORM_URLENCODED_VALUE,
+                    consumes = MediaType.APPLICATION_JSON_VALUE,
                     produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
-    public Map<String, String> settlementDebit(SettlementRequest req) {
-        println req.dump()
-        Card card = cardRepository.findById(req.cardId).get()
-        req.card = card
-        paymentService.processSettlementDebit(req)
-        return ["responseCode": "00"]
+    public ResponseEntity settlementDebit(@Valid @RequestBody AuthSettlementRequest req) {
+        Optional<Card> card = cardRepository.findById(req.cardId)
+        if ( !card.isPresent()) {
+            String errorMessage = "Card not found"
+            log.error("Failing card transaction for ${req.cardId} because ${errorMessage}")
+            return Response.returnError(errorMessage)
+        }
+        req.card = card.get()
+        Either<TxnNotEligible, Boolean> result = authorizationManager.checkEligibility(req)
+        if(result.isRight()) {
+            Either<GenericErrorResponse,CustomerTransaction> txnResult = paymentService.processSettlementDebit(req)
+            if (txnResult.isRight()) {
+                return Response.returnSimpleJson(paymentService.getCustomerTransactionResponse(txnResult.right().get()))
+            } else {
+                String reason = txnResult.left().get().reason
+                log.error("Failing card transaction for ${req.cardId} because ${reason}")
+                return Response.returnError(reason)
+            }
+        } else {
+            String reason = result.left().get().reason
+            log.error("Failing card transaction for ${req.cardId} because ${reason}")
+            return Response.returnError(reason)
+        }
     }
 
     @RequestMapping(value = "/settlement-credit", method = RequestMethod.POST,
-            consumes = MediaType.APPLICATION_FORM_URLENCODED_VALUE,
+            consumes = MediaType.APPLICATION_JSON_VALUE,
             produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
-    public Map<String, String> settlementCredit(SettlementRequest req) {
-        println req.dump()
-        Card card = cardRepository.findById(req.cardId).get()
-        req.card = card
-        paymentService.processSettlementCredit(req)
-        return ["responseCode": "00"]
+    public ResponseEntity settlementCredit(@Valid @RequestBody AuthSettlementRequest req) {
+        Optional<Card> card = cardRepository.findById(req.cardId)
+        if ( !card.isPresent()) {
+            String errorMessage = "Card not found"
+            log.error("Failing card transaction for ${req.cardId} because ${errorMessage}")
+            return Response.returnError(errorMessage)
+        }
+        req.card = card.get()
+        Either<TxnNotEligible, Boolean> result = authorizationManager.checkEligibility(req)
+        if(result.isRight()) {
+            Either<GenericErrorResponse,CustomerTransaction> txnResult = paymentService.processSettlementCredit(req)
+            if (txnResult.isRight()) {
+                return Response.returnSimpleJson(paymentService.getCustomerTransactionResponse(txnResult.right().get()))
+            } else {
+                String reason = txnResult.left().get().reason
+                log.error("Failing card transaction for ${req.cardId} because ${reason}")
+                return Response.returnError(reason)
+            }
+        } else {
+            String reason = result.left().get().reason
+            log.error("Failing card transaction for ${req.cardId} because ${reason}")
+            return Response.returnError(reason)
+        }
     }
-
-
 }
