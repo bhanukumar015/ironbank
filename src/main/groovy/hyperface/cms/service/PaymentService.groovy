@@ -190,10 +190,11 @@ class PaymentService {
 
         Account account = req.card.creditAccount
 
-        CustomerTransaction txn = customerTransactionRepository.findById(req.transactionId)?.get()
-        if (txn == null) {
+        Optional<CustomerTransaction> customerTransaction = customerTransactionRepository.findById(req.transactionId)
+        if (!customerTransaction.isPresent()) {
             return Either.left(new GenericErrorResponse(reason: "Invalid transactionId"))
         }
+        CustomerTransaction txn = customerTransaction.get()
         if (txn.txnStatus != TransactionStatus.APPROVED) {
             return Either.left(new GenericErrorResponse(reason: "This transaction has already been settled"))
         }
@@ -218,10 +219,11 @@ class PaymentService {
     public Either<GenericErrorResponse,CustomerTransaction> processSettlementCredit(AuthSettlementRequest req) {
 
         Account account = req.card.creditAccount
-        CustomerTransaction txn = customerTransactionRepository.findById(req.transactionId)?.get()
-        if (txn == null) {
+        Optional<CustomerTransaction> customerTransaction = customerTransactionRepository.findById(req.transactionId)
+        if (!customerTransaction.isPresent()) {
             return Either.left(new GenericErrorResponse(reason: "Invalid transactionId"))
         }
+        CustomerTransaction txn = customerTransaction.get()
         if (txn.txnStatus != TransactionStatus.APPROVED) {
             return Either.left(new GenericErrorResponse(reason: "This transaction has already been settled"))
         }
