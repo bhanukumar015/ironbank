@@ -204,8 +204,6 @@ class PaymentService {
         }
         TransactionLedger ledgerEntry = createDebitEntry(txn, req.settlementAmount)
         account.availableCreditLimit -= (settlementBillingAmount - txn.billingAmount)
-        println settlementBillingAmount
-        println txn.billingAmount
         if (settlementBillingAmount == txn.billingAmount) {
             txn.txnStatus = TransactionStatus.SETTLED
         } else {
@@ -233,8 +231,6 @@ class PaymentService {
         }
         TransactionLedger ledgerEntry = createCreditEntry(txn, req.settlementAmount)
         account.availableCreditLimit += (settlementBillingAmount - txn.billingAmount)
-        println settlementBillingAmount
-        println txn.billingAmount
         if (settlementBillingAmount == txn.billingAmount) {
             txn.txnStatus = TransactionStatus.SETTLED
         } else {
@@ -334,10 +330,10 @@ class PaymentService {
         return (LedgerTransactionType)txnType
     }
 
-    private Double getConvertedAmount(String sourceCurrency, String deafultCurrency, Double amount) {
+    private Double getConvertedAmount(String sourceCurrency, String defaultCurrency, Double amount) {
         CurrencyConversion currencyConversion =
                 currencyConversionRepository.findBySourceCurrencyAndDestinationCurrency(
-                       sourceCurrency, deafultCurrency)
+                       sourceCurrency, defaultCurrency)
         return amount * currencyConversion.conversionRate
     }
 }
