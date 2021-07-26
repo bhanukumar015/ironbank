@@ -12,8 +12,7 @@ import java.util.concurrent.TimeUnit
 class ExecutorConfig {
     private static final CORE_POOL_SIZE = Runtime.getRuntime().availableProcessors() * 2
     private static final MAX_POOL_SIZE = CORE_POOL_SIZE * 2
-    private static final long KEEP_ALIVE_TIME_IN_NANOSECONDS = 300000000000l
-    private static final boolean IS_CORE_THREAD_TIMEOUT_ALLOWED = true
+    private static final long KEEP_ALIVE_TIME_IN_MINUTES = 5l
 
     @Bean("threadpoolexecutor")
     ExecutorService threadPoolExecutorService() {
@@ -21,8 +20,8 @@ class ExecutorConfig {
         ExecutorService executorService = new ThreadPoolExecutor(
                 CORE_POOL_SIZE,
                 MAX_POOL_SIZE,
-                KEEP_ALIVE_TIME_IN_NANOSECONDS,
-                TimeUnit.SECONDS,
+                KEEP_ALIVE_TIME_IN_MINUTES,
+                TimeUnit.MINUTES,
                 new LinkedBlockingQueue<Runnable>()
         )
         return executorService
