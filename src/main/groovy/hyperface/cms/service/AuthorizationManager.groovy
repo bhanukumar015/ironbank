@@ -1,7 +1,10 @@
 package hyperface.cms.service
 
 import hyperface.cms.Constants
+import hyperface.cms.appdata.TxnNotEligible
+import hyperface.cms.commands.AuthSettlementRequest
 import hyperface.cms.commands.AuthorizationRequest
+import hyperface.cms.commands.CustomerTransactionRequest
 import hyperface.cms.commands.RejectTxnResponse
 import hyperface.cms.domains.Card
 import hyperface.cms.domains.CreditAccount
@@ -87,4 +90,16 @@ class AuthorizationManager {
         return rejectTxnResponse
     }
 
+    public Either<TxnNotEligible, Boolean> checkEligibility(AuthSettlementRequest req) {
+        if(req.card.hotlisted) {
+            return Either.left(new TxnNotEligible(reason: "Card is blocked"))
+        }
+        else if (req.card.isLocked) {
+            return Either.left(new TxnNotEligible(reason: "Card is locked"))
+        }
+        else if(req.settlementCurrency != req.card.creditAccount.defaultCurrency && !req.card.enableOverseasTransactions) {
+            return Either.left(new TxnNotEligible(reason: "International transactions are disabled"))
+        }
+        return Either.right(true)
+    }
 }
