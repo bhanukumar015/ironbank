@@ -1,9 +1,9 @@
 package hyperface.cms.service
 
 import groovy.util.logging.Slf4j
-import hyperface.cms.commands.Operation
-import hyperface.cms.commands.RewardsRequest
-import hyperface.cms.commands.RewardsResponse
+import hyperface.cms.commands.rewards.Operation
+import hyperface.cms.commands.rewards.RewardsRequest
+import hyperface.cms.commands.rewards.RewardsResponse
 import hyperface.cms.domains.CreditAccount
 import hyperface.cms.domains.Transaction
 import hyperface.cms.domains.rewards.Reward
