@@ -1,5 +1,6 @@
 package hyperface.cms.controllers
 
+import groovy.util.logging.Slf4j
 import hyperface.cms.appdata.TxnNotEligible
 import hyperface.cms.commands.AuthSettlementRequest
 import hyperface.cms.commands.GenericErrorResponse
@@ -24,9 +25,8 @@ import javax.validation.Valid
 
 @RestController
 @RequestMapping("/settlements")
+@Slf4j
 public class SettlementController {
-
-    Logger log = LoggerFactory.getLogger(SettlementController.class);
 
     @Autowired
     PaymentService paymentService
@@ -37,7 +37,7 @@ public class SettlementController {
     @Autowired
     AuthorizationManager authorizationManager
 
-    @RequestMapping(value = "/settlement-debit", method = RequestMethod.POST,
+    @RequestMapping(value = "/debit", method = RequestMethod.POST,
                     consumes = MediaType.APPLICATION_JSON_VALUE,
                     produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
@@ -66,7 +66,7 @@ public class SettlementController {
         }
     }
 
-    @RequestMapping(value = "/settlement-credit", method = RequestMethod.POST,
+    @RequestMapping(value = "/credit", method = RequestMethod.POST,
             consumes = MediaType.APPLICATION_JSON_VALUE,
             produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody

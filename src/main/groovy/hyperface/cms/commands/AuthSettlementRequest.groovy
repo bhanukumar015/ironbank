@@ -13,12 +13,12 @@ class AuthSettlementRequest {
     String cardId
     @NotBlank(message = "transactionId must not be null/empty")
     String transactionId
-    @PositiveValue(message = "transactionAmount must be an double, greater than 0")
+    @PositiveValue(message = "settlementAmount must be an double, greater than 0")
     Double settlementAmount
-    @NotBlank(message = "transactionCurrency must not be null/empty")
+    @NotBlank(message = "settlementCurrency must not be null/empty")
     String settlementCurrency
     ZonedDateTime transactionDate
-    @StringEnumeration(enumClass = TransactionType.class,message = "operation must not be null/empty. Must be one of [SETTLEMENT_DEBIT,SETTLEMENT_CREDIT]")
+    @StringEnumeration(enumClass = TransactionType.class,message = "transactionType must not be null/empty. Must be one of [SETTLEMENT_DEBIT,SETTLEMENT_CREDIT]")
     String transactionType
 
     Card card
