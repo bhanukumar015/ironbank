@@ -1,99 +1,158 @@
 package hyperface.cms.service.pdfbox
 
-import hyperface.cms.domains.PDFBox
+import hyperface.cms.Constants
+import org.apache.commons.text.WordUtils
 import org.apache.pdfbox.pdmodel.PDDocument
 import org.apache.pdfbox.pdmodel.PDPage
 import org.apache.pdfbox.pdmodel.PDPageContentStream
 import org.apache.pdfbox.pdmodel.common.PDRectangle
 import org.apache.pdfbox.pdmodel.font.PDFont
+import org.apache.pdfbox.pdmodel.graphics.image.JPEGFactory
 import org.apache.pdfbox.pdmodel.graphics.image.PDImageXObject
+
+import java.awt.image.BufferedImage
 
 class PDFBoxServiceImpl implements PDFBoxService {
 
-    private static final PDFBoxServiceImpl pdfBoxService = new PDFBoxServiceImpl()
-
+    private PDDocument document
     private PDPageContentStream contentStream
 
-    static PDFBoxServiceImpl getInstance() {
-        return pdfBoxService
+    PDFBoxServiceImpl() {
+        document = new PDDocument()
     }
 
-    PDPageContentStream addPage(PDDocument document, PDPage pdPage) {
+    PDDocument getDocument() {
+        return document
+    }
+
+    PDPageContentStream addA4Page() {
+        PDPage pdPage = new PDPage(PDRectangle.A4)
         document.addPage(pdPage)
         contentStream = new PDPageContentStream(document, pdPage)
         return contentStream
     }
 
     @Override
-    void updateX(int x) {
-
-    }
-
-    @Override
-    void updateY(int y) {
-
-    }
-
-    @Override
     float getTextWidth(PDFont fontType, float fontSize, String text) {
-        return 0
+        return ((fontType.getStringWidth(text) / 1000.0f) * fontSize) as float
     }
 
     @Override
-    void writeText(PDPageContentStream contentStream, PDFBox pdfBox) {
+    void writeText(PDFont font, float[] rgb, float fontSize, float x, float y, float lineSpace, int wrapLength, String text) throws IOException {
         contentStream.saveGraphicsState()
 
-        contentStream.beginText()
-        contentStream.setFont(pdfBox.pdFont, pdfBox.fontSize)
-        //contentStream.newLineAtOffset(pdfBox.cursor.getX(), pdfBox.cursor.getY())
-        contentStream.newLineAtOffset(10, -50)
-        contentStream.showText(pdfBox.text)
-        contentStream.endText()
+        String[] paragraph = text.split(Constants.DELIMITER)
+        for (int i = 0; i < paragraph.length; i++) {
+            String[] wrappedText = WordUtils.wrap(paragraph[i], wrapLength as int).split("\\r?\\n")
+            if(wrappedText.length > 1 && lineSpace == 0) {
+                lineSpace = -fontSize
+            }
+            for (int j=0; j < wrappedText.length; j++) {
+                y += lineSpace
 
-        contentStream.beginText()
-        contentStream.setFont(pdfBox.pdFont, pdfBox.fontSize)
-        //contentStream.newLineAtOffset(pdfBox.cursor.getX(), pdfBox.cursor.getY())
-        contentStream.newLineAtOffset(10, 150)
-        contentStream.showText(pdfBox.text)
-        contentStream.endText()
+                contentStream.beginText()
+                contentStream.setFont(font, fontSize)
+                contentStream.setNonStrokingColor(rgb[0], rgb[1], rgb[2])
+                contentStream.newLineAtOffset(x, y)
+                contentStream.showText(wrappedText[j])
+                contentStream.endText()
+            }
+        }
+
 
         contentStream.restoreGraphicsState()
     }
 
     @Override
-    void drawSolidLine(PDPageContentStream contentStream, PDFBox.Cursor begin, PDFBox.Cursor end) {
+    void drawSolidLine(float[] rgb, float sX, float sY, float eX, float eY, float th) throws IOException {
         contentStream.saveGraphicsState()
 
-        contentStream.setStrokingColor(1.0, 0.0, 0.0) //todo: take it from enums
-        contentStream.moveTo(begin.getX(), begin.getY())
-        contentStream.lineTo(end.getX(), end.getY())
+        contentStream.setLineWidth(th)
+        contentStream.setStrokingColor(rgb[0], rgb[1], rgb[2])
+        contentStream.moveTo(sX, sY)
+        contentStream.lineTo(eX, eY)
         contentStream.stroke()
 
         contentStream.restoreGraphicsState()
     }
 
     @Override
-    void drawRectangularBox(PDPageContentStream contentStream, PDFBox.Cursor cursor, float w, float h) {
+    void drawRect(float[] rgb, float x, float y, float w, float h) throws IOException {
         contentStream.saveGraphicsState()
 
-        contentStream.addRect(cursor.getX(), cursor.getY(), w, h)
-        contentStream.setNonStrokingColor(22/255 as float, 99/255f as float, 51/255f as float)
+        contentStream.addRect(x, y, w, h)
+        contentStream.setNonStrokingColor(rgb[0], rgb[1], rgb[2])
         contentStream.fill()
 
         contentStream.restoreGraphicsState()
     }
 
     @Override
-    void drawImage(PDPageContentStream contentStream, PDImageXObject imageXObject, PDFBox.Image image) {
+    void drawImage(PDImageXObject imageXObject, float x, float y, float w, float h) throws IOException {
         contentStream.saveGraphicsState()
 
-        contentStream.drawImage(imageXObject, image.cursor.getX(), image.cursor.getY(), image.getWidth(), image.getHeight())
+        contentStream.drawImage(imageXObject, x, y, w, h)
 
         contentStream.restoreGraphicsState()
     }
 
     @Override
-    void close(PDPageContentStream contentStream) {
+    void writeTableContents(float[] rgb, List<List<String>> content, float x, float y, float rowH, float[] colW, float cellPadding, float fontHeight, float fontSize, PDFont font, char[] colAlign) throws IOException {
+        contentStream.saveGraphicsState()
+
+        float tableW = 0.0
+        for (int i=0; i< colW.length; i++) {
+            tableW += colW[i]
+        }
+
+        float sx = x
+        float sy = y
+
+        for (int i = 0; i < content.size(); i++) {
+            for (int j = 0; j < content[i].size(); j++) {
+                if (colAlign[j] == Constants.ALIGN_RIGHT) {
+                    sx += colW[j] - 2 * cellPadding - getTextWidth(font, fontSize, content[i][j]) as float
+                }
+                // max require to use fontHeight here for sy??
+                writeText(font, rgb, fontSize, sx + cellPadding as float, sy - (rowH + fontSize)/2 as float, 0, 100, content[i][j]) //todo: estimate by width
+
+                sx += colW[j]
+            }
+            sx = x
+            sy += (-rowH)
+        }
+
+        contentStream.restoreGraphicsState()
+    }
+
+    @Override
+    void drawTableBorders(float[] rgb, int rows, int cols, float x, float y, float rowH, float rowW, float[] colW, boolean isHorizontalBorder, boolean isVerticalBorder) throws IOException {
+        contentStream.saveGraphicsState()
+
+        float sx = x
+        float sy = y
+        if(isHorizontalBorder) {
+            for(int i=0; i <= rows; i++) {
+                drawSolidLine(rgb, sx, sy, sx + rowW as float, sy, 1)
+                sy += (-rowH)
+            }
+        }
+
+        if(isVerticalBorder) {
+            sx = x
+            sy = y
+            for (int i=0; i < cols; i++) {
+                drawSolidLine(rgb, sx, sy, sx, sy - (rows* rowH) as float, 1)
+                sx += colW[i]
+            }
+            drawSolidLine(rgb, sx, sy, sx, sy - (rows * rowH) as float, 1)
+        }
+
+        contentStream.restoreGraphicsState()
+    }
+
+    @Override
+    void close() {
         contentStream.close()
     }
 }

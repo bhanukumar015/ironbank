@@ -7,6 +7,10 @@ import org.springframework.http.HttpStatus
 import org.springframework.web.multipart.MultipartFile
 import org.springframework.web.server.ResponseStatusException
 
+import java.text.DateFormat
+import java.text.SimpleDateFormat
+import java.time.ZonedDateTime
+
 @Slf4j
 class Utilities {
 
@@ -31,5 +35,20 @@ class Utilities {
 
         byte[] fileByteArray = multipartFile.getBytes()
         return Base64.getEncoder().encodeToString(fileByteArray)
+    }
+
+    static String convertDateToCustomFormat(Date date, String format) {
+        DateFormat dateFormat = new SimpleDateFormat(format)
+        return dateFormat.format(date)
+    }
+
+    static Date getStatementStartDate(ZonedDateTime dueDate) {
+        //todo: impl
+        return dueDate as Date
+    }
+
+    static Date getStatementEndDate(ZonedDateTime dueDate) {
+        //todo: impl
+        return dueDate as Date
     }
 }

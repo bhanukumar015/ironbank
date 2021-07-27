@@ -54,9 +54,13 @@ class PDFBox {
     Padding padding
     PDFont pdFont
 
+    float[] rgb
+
     float fontSize
     float pw
     float ph
+
+
 
     String text
 

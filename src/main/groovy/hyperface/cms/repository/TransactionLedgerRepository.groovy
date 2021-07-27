@@ -1,6 +1,5 @@
 package hyperface.cms.repository
 
-
 import hyperface.cms.domains.ledger.TransactionLedger
 import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.CrudRepository
@@ -18,5 +17,4 @@ interface TransactionLedgerRepository extends CrudRepository<TransactionLedger, 
      */
     @Query("SELECT tl FROM TransactionLedger tl WHERE tl.transaction.id = :txnRefId")
     List<TransactionLedger> findAllByTxnRefId(@Param("txnRefId") String txnRefId)
-
 }

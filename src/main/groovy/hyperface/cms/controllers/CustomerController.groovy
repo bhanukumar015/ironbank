@@ -156,6 +156,7 @@ public class CustomerController {
                     .contentType(MediaType.APPLICATION_PDF)
                     .body(new InputStreamResource(inputStream))
         } catch (Exception e) {
+            println e.printStackTrace()
             log.error("Error occurred while generating statement: ${e.message}")
         } finally {
             if (inputStream != null) {

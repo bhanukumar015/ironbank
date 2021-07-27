@@ -99,4 +99,13 @@ class Constants {
 
     /* URL Constants */
     public static final String PATH_CLIENT_BASE_URL = "/client"
+
+    /* Date related Constants */
+    public static final String MMM_SPACE_DD_COMMA_SPACE_YYYY = "MMM dd, yyyy"
+    public static final String DD_SPACE_MMM_SPACE_YYYY = "dd MMM yyyy"
+
+    /** PDFBox related Constants */
+    public static final char ALIGN_LEFT = 'L'
+    public static final char ALIGN_RIGHT = 'R'
+    public static final String DELIMITER = ";"
 }

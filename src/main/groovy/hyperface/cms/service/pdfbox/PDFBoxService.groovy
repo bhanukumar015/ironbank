@@ -1,26 +1,25 @@
 package hyperface.cms.service.pdfbox
 
-import hyperface.cms.domains.PDFBox
-import hyperface.cms.domains.PDFBox.Cursor
-import org.apache.pdfbox.pdmodel.PDPageContentStream
 import org.apache.pdfbox.pdmodel.font.PDFont
 import org.apache.pdfbox.pdmodel.graphics.image.PDImageXObject
 
+import java.awt.image.BufferedImage
+
 interface PDFBoxService {
 
-    void updateX(int x)
+    float getTextWidth(PDFont fontType, float fontSize, String text) throws IOException
 
-    void updateY(int y)
+    void writeText(PDFont font, float[] rgb, float fontSize, float x, float y, float lineSpace, int wrapLength, String text) throws IOException
 
-    float getTextWidth(PDFont fontType, float fontSize, String text)
+    void drawSolidLine(float[] rgb, float sX, float sY, float eX, float eY, float th) throws IOException
 
-    void writeText(PDPageContentStream contentStream, PDFBox pdfBox)
+    void drawRect(float[] rgb, float x, float y, float w, float h) throws IOException
 
-    void drawSolidLine(PDPageContentStream contentStream, Cursor begin, Cursor end)
+    void drawImage(PDImageXObject imageXObject, float x, float y, float w, float h) throws IOException
 
-    void drawRectangularBox(PDPageContentStream contentStream, Cursor cursor, float w, float h)
+    void writeTableContents(float[] rgb, List<List<String>> content, float x, float y, float rowH, float[] colW, float cellPadding, float fontHeight, float fontSize, PDFont font, char[] colAlign) throws IOException
 
-    void drawImage(PDPageContentStream contentStream, PDImageXObject imageXObject, PDFBox . Image image)
+    void drawTableBorders(float[] rgb, int rows, int cols, float x, float y, float rowH, float rowW, float[] colW, boolean isHorizontalBorder, boolean isVerticalBorder) throws IOException
 
-    void close(PDPageContentStream contentStream)
+    void close()
 }
