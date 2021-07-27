@@ -45,6 +45,12 @@ class CardApplication {
     String hyperfaceCustId
     KycOption.KycType kycType
     String bankCustId
+    String hyperfaceCardAccountId
+    String custSavingsBankAccNumber
+    String custSavingsBankIfsCode
+
+    @OneToOne(mappedBy = "cardApplication")
+    FixedDepositDetail fdDetail
 
     @CreationTimestamp
     ZonedDateTime capturedOn

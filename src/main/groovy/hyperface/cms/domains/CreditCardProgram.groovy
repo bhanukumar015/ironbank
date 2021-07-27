@@ -65,6 +65,10 @@ class CreditCardProgram extends HyperfaceProgram {
     Double overLimitAuthPct
     Double cashAdvanceLimitPct
 
+    Boolean isSecuredCardProgram
+    Double minCreditLineFdPercentage
+    Double maxCreditLineFdPercentage
+
     // Count for accounts created in the current day
     Integer currentDayAccountCount
     // Max limit for account creation in a day

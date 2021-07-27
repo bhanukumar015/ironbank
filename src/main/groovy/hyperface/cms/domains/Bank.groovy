@@ -16,4 +16,7 @@ class Bank {
     String name
     String emailAddress
 
+    // Below two fields would be used to transfer amount for FD fund transfer
+    String omnibusAccountNumber
+    String ifsCode
 }
