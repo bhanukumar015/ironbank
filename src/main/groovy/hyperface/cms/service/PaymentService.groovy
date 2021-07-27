@@ -68,7 +68,7 @@ class PaymentService {
     @Autowired
     private TransactionLedgerRepository transactionLedgerRepository
 
-    public Either<TxnNotEligible, Boolean> checkEligibility(CustomerTransactionRequest req) {
+    static Either<TxnNotEligible, Boolean> checkEligibility(CustomerTransactionRequest req) {
         if(req.card.hotlisted) {
             return Either.left(new TxnNotEligible(reason: "Card is blocked"))
         }
@@ -81,7 +81,7 @@ class PaymentService {
         return Either.right(true)
     }
 
-    public Either<GenericErrorResponse,CustomerTransaction> createCustomerTxn(CustomerTransactionRequest req) {
+    Either<GenericErrorResponse,CustomerTransaction> createCustomerTxn(CustomerTransactionRequest req) {
 
         Account account = req.card.creditAccount
         if (account == null) {
@@ -90,7 +90,7 @@ class PaymentService {
         CustomerTransaction txn = new CustomerTransaction()
         txn.card = req.card
         txn.txnDate = req.transactionDate ?: ZonedDateTime.now()
-        txn.transactionType = (TransactionType)req.transactionType
+        txn.transactionType = req.transactionType as TransactionType
         txn.txnDescription = req.transactionDescription
         txn.transactionAmount = req.transactionAmount
         txn.transactionCurrency = req.transactionCurrency
@@ -150,7 +150,7 @@ class PaymentService {
         return Either.right(txn)
     }
 
-    public CustomerTransactionResponse getCustomerTransactionResponse(CustomerTransaction txn) {
+    static CustomerTransactionResponse getCustomerTransactionResponse(CustomerTransaction txn) {
         CustomerTransactionResponse txnResponse = new CustomerTransactionResponse()
         txnResponse.id = txn.id
         txnResponse.cardId = txn.card.id
@@ -164,6 +164,7 @@ class PaymentService {
 
         return txnResponse
     }
+
     public CustomerTxn processAuthorization(AuthorizationRequest req) {
         CustomerTxn txn = createCustomerTxn(req)
         // reduce this balance from the available credit limit
@@ -186,7 +187,7 @@ class PaymentService {
         return txn
     }
 
-    public Either<GenericErrorResponse,CustomerTransaction> processSettlementDebit(AuthSettlementRequest req) {
+    Either<GenericErrorResponse,CustomerTransaction> processSettlementDebit(AuthSettlementRequest req) {
 
         Account account = req.card.creditAccount
 
@@ -214,7 +215,7 @@ class PaymentService {
         return Either.right(txn)
     }
 
-    public Either<GenericErrorResponse,CustomerTransaction> processSettlementCredit(AuthSettlementRequest req) {
+    Either<GenericErrorResponse,CustomerTransaction> processSettlementCredit(AuthSettlementRequest req) {
 
         Account account = req.card.creditAccount
         Optional<CustomerTransaction> customerTransaction = customerTransactionRepository.findById(req.transactionId)
@@ -241,7 +242,7 @@ class PaymentService {
         return Either.right(txn)
     }
 
-    public Integer getInterestRateForTxn(LedgerEntry ledgerEntry) {
+    static Integer getInterestRateForTxn(LedgerEntry ledgerEntry) {
         CreditCardProgram program = ledgerEntry.customerTxn.card.cardProgram
         InterestCriteria matchedCriteria = program.scheduleOfCharges.interestCriteriaList?.find({
             return it.checkForMatch(ledgerEntry)
@@ -260,6 +261,7 @@ class PaymentService {
         debitEntry.openingBalance = account.currentBalance
         debitEntry.closingBalance = account.currentBalance - txn.billingAmount
         debitEntry.transaction = txn
+        debitEntry.creditAccount = account
         transactionLedgerRepository.save(debitEntry)
         account.currentBalance = debitEntry.closingBalance
         creditAccountRepository.save(account)
@@ -277,6 +279,7 @@ class PaymentService {
         debitEntry.openingBalance = account.currentBalance
         debitEntry.closingBalance = account.currentBalance - txn.billingAmount
         debitEntry.transaction = txn
+        debitEntry.creditAccount = account
         transactionLedgerRepository.save(debitEntry)
         account.currentBalance = debitEntry.closingBalance
         creditAccountRepository.save(account)
@@ -294,6 +297,7 @@ class PaymentService {
         creditEntry.openingBalance = account.currentBalance
         creditEntry.closingBalance = account.currentBalance + txn.billingAmount
         creditEntry.transaction = txn
+        creditEntry.creditAccount = account
         transactionLedgerRepository.save(creditEntry)
         account.currentBalance = creditEntry.closingBalance
         creditAccountRepository.save(account)
@@ -311,13 +315,14 @@ class PaymentService {
         creditEntry.openingBalance = account.currentBalance
         creditEntry.closingBalance = account.currentBalance + settleAmount
         creditEntry.transaction = txn
+        creditEntry.creditAccount = account
         transactionLedgerRepository.save(creditEntry)
         account.currentBalance = creditEntry.closingBalance
         creditAccountRepository.save(account)
         return creditEntry
     }
 
-    private LedgerTransactionType getLedgerTransactionType(TransactionType txnType) {
+    private static LedgerTransactionType getLedgerTransactionType(TransactionType txnType) {
         if (txnType.SETTLEMENT_DEBIT) {
             return LedgerTransactionType.PURCHASE
         } else if (txnType.SETTLEMENT_CREDIT) {
@@ -327,7 +332,7 @@ class PaymentService {
         } else if (txnType.SETTLEMENT_CREDIT_CASH) {
             return LedgerTransactionType.CASH_WITHDRAWAL_REFUND
         }
-        return (LedgerTransactionType)txnType
+        return txnType as LedgerTransactionType
     }
 
     private Double getConvertedAmount(String sourceCurrency, String defaultCurrency, Double amount) {
