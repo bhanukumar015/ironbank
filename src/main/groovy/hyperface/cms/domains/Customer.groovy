@@ -43,6 +43,6 @@ class Customer {
 
     @OneToMany
     @JoinColumn(name = "hyperfaceCustomerId", referencedColumnName = "id")
-    private List<CustomerKycDetail> customerKycDetails
+    List<CustomerKycDetail> customerKycDetails
 
 }

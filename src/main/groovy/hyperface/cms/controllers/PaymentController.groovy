@@ -15,6 +15,7 @@ import hyperface.cms.repository.CardRepository
 import hyperface.cms.repository.CreditAccountRepository
 import hyperface.cms.service.AuthorizationManager
 import hyperface.cms.service.PaymentService
+import hyperface.cms.util.Response
 import io.vavr.control.Either
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
@@ -96,37 +97,24 @@ public class PaymentController {
         if ( !card.isPresent()) {
             String errorMessage = "Card not found"
             log.error("Failing card transaction for ${req.cardId} because ${errorMessage}")
-            return returnError(errorMessage)
+            return Response.returnError(errorMessage)
         }
         req.card = card.get()
         Either<TxnNotEligible, Boolean> result = paymentService.checkEligibility(req)
         if(result.isRight()) {
             Either<GenericErrorResponse,CustomerTransaction> txnResult = paymentService.createCustomerTxn(req)
             if (txnResult.isRight()) {
-                return returnSimpleJson(paymentService.getCustomerTransactionResponse(txnResult.right().get()))
+                return Response.returnSimpleJson(paymentService.getCustomerTransactionResponse(txnResult.right().get()))
             } else {
                 String reason = txnResult.left().get().reason
                 log.error("Failing card transaction for ${req.cardId} because ${reason}")
-                return returnError(reason)
+                return Response.returnError(reason)
             }
         }else {
             String reason = result.left().get().reason
             log.error("Failing card transaction for ${req.cardId} because ${reason}")
-            return returnError(reason)
+            return Response.returnError(reason)
         }
 
-    }
-
-    private ResponseEntity returnSimpleJson(def resultObj) {
-        return ResponseEntity
-                .ok()
-                .contentType(MediaType.APPLICATION_JSON)
-                .body(resultObj)
-    }
-
-    private ResponseEntity returnError(String errorMessage) {
-        return ResponseEntity.badRequest()
-                .contentType(MediaType.APPLICATION_JSON)
-                .body(new GenericErrorResponse(reason: errorMessage))
     }
 }

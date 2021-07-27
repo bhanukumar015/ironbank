@@ -1,15 +1,17 @@
 package hyperface.cms.domains.kyc
 
-
+import hyperface.cms.domains.cardapplication.KycProof
 import hyperface.cms.domains.kyc.method.KycMethod
 import org.hibernate.annotations.GenericGenerator
 
+import javax.persistence.CascadeType
 import javax.persistence.Entity
 import javax.persistence.EnumType
 import javax.persistence.Enumerated
 import javax.persistence.GeneratedValue
 import javax.persistence.Id
 import javax.persistence.JoinColumn
+import javax.persistence.OneToMany
 import javax.persistence.OneToOne
 import java.time.ZonedDateTime
 
@@ -43,4 +45,6 @@ class CustomerKycDetail {
     @JoinColumn(name = "kyc_method_id", referencedColumnName = "id")
     KycMethod kycMethod
 
+    @OneToMany(cascade = CascadeType.ALL)
+    List<KycProof> kycProofs
 }

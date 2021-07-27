@@ -37,7 +37,7 @@ import org.springframework.web.bind.annotation.RestController
 @RestController
 @Slf4j
 @RequestMapping("/customers")
-public class CustomerController {
+class CustomerController {
 
     @Autowired
     CustomerRepository customerRepository
@@ -55,20 +55,20 @@ public class CustomerController {
     CardStatementRepository cardStatementRepository
 
     @GetMapping(value = "/list")
-    public List<Customer> getCustomers() {
+    List<Customer> getCustomers() {
         return customerRepository.findAll()
     }
 
     @RequestMapping(value = "/create", method = RequestMethod.POST, consumes = MediaType.APPLICATION_FORM_URLENCODED_VALUE)
-    public Customer createOrSave(Customer customer) {
+    Customer createOrSave(Customer customer) {
         println customer.dump()
         return customerRepository.save(customer)
     }
 
     // this will be allowed only by
     @RequestMapping(value = "/createCreditAccount", method = RequestMethod.POST,
-            consumes = MediaType.APPLICATION_FORM_URLENCODED_VALUE)
-    public CreditAccount createCreditAccount(CreateCreditAccountRequest req) {
+          consumes = MediaType.APPLICATION_FORM_URLENCODED_VALUE)
+    CreditAccount createCreditAccount(CreateCreditAccountRequest req) {
         println req.dump()
         String customerId = req.customerId
         Customer customer = customerRepository.findById(customerId).get()
@@ -79,7 +79,7 @@ public class CustomerController {
 
     @RequestMapping(value = "/createCard", method = RequestMethod.POST,
             consumes = MediaType.APPLICATION_FORM_URLENCODED_VALUE)
-    public Card createCard(CreateCardRequest req) {
+    Card createCard(CreateCardRequest req) {
         println req.dump()
 
         // check if a card already exists for this customer under this program
@@ -95,7 +95,7 @@ public class CustomerController {
     LedgerEntryRepository ledgerEntryRepository
 
     @RequestMapping(value = "/fetchTransactions", method = RequestMethod.GET)
-    public List<CardTransaction> fetchCardTransactions(@RequestParam("cardId") String cardId) {
+    List<CardTransaction> fetchCardTransactions(@RequestParam("cardId") String cardId) {
         println "Input cardId: ${cardId}"
         FetchCardTransactionsRequest req = new FetchCardTransactionsRequest(cardId: cardId)
         Date from = req.from ?: getLastMonthBeginning()

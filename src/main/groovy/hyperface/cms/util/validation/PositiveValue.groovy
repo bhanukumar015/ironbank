@@ -5,7 +5,7 @@ import javax.validation.Payload
 import java.lang.annotation.*
 
 @Documented
-@Constraint(validatedBy = PositiveValueValidator.class)
+@Constraint(validatedBy = PositiveNumberValidator.class)
 @Target(ElementType.FIELD)
 @Retention(RetentionPolicy.RUNTIME)
 @interface PositiveValue {

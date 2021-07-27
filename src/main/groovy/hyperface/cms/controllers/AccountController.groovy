@@ -1,12 +1,14 @@
 package hyperface.cms.controllers
 
 import groovy.util.logging.Slf4j
-import hyperface.cms.commands.RewardsRequest
-import hyperface.cms.commands.RewardsResponse
+import hyperface.cms.commands.rewards.RewardsRequest
+import hyperface.cms.commands.rewards.RewardsResponse
 import hyperface.cms.domains.CreditAccount
 import hyperface.cms.domains.rewards.Reward
 import hyperface.cms.repository.CreditAccountRepository
 import hyperface.cms.service.RewardService
+import hyperface.cms.util.Response
+import org.apache.tomcat.util.http.ResponseUtil
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
@@ -43,7 +45,8 @@ class AccountController {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, errorMessage)
         }
 
-        return rewardService.getSummary(creditAccountOptional.get())
+        RewardsResponse res = rewardService.getSummary(creditAccountOptional.get())
+        return Response.returnSimpleJson(res)
     }
 
     @PostMapping(value = "rewards", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
@@ -69,7 +72,7 @@ class AccountController {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, errorMessage)
         }
 
-        return rewardService.executeOperation(request, creditAccount, reward)
-
+        RewardsResponse res = rewardService.executeOperation(request, creditAccount, reward)
+        return Response.returnSimpleJson(res)
     }
 }

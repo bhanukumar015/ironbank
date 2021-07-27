@@ -89,6 +89,32 @@ class Constants {
         CASH_WITHDRAWAL
     }
 
+    enum Salutation {
+        Mr,
+        Miss,
+        Mrs
+    }
+
+    enum Gender {
+        MALE,
+        FEMALE,
+        OTHER
+    }
+
+    enum MaritalStatus {
+        SINGLE,
+        MARRIED,
+        WIDOWED,
+        SEPARATED,
+        DIVORCED
+    }
+
+    enum Profession {
+        SALARIED,
+        SELF_EMPLOYED,
+        OTHER
+    }
+
     public final static String NiumSuccessResponseKey = 'status'
     public final static String NiumSuccessResponseValue = 'Success'
 
