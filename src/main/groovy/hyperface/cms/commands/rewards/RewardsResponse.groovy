@@ -1,4 +1,4 @@
-package hyperface.cms.commands
+package hyperface.cms.commands.rewards
 
 import com.fasterxml.jackson.annotation.JsonInclude
 

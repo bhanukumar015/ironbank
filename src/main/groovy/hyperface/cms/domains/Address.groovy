@@ -1,6 +1,6 @@
 package hyperface.cms.domains
 
-public class Address {
+class Address {
     String line1
     String line2
     String line3
