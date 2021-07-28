@@ -84,10 +84,10 @@ class NiumCreateCardCallback implements Callback<JsonNode>{
                 enableCashWithdrawal = false
                 enableMagStripe = false
                 dailyTransactionLimit = new TransactionLimit().tap{
-                    value = cardProgram.defaultDailyTransactionLimit
+                    limit = cardProgram.defaultDailyTransactionLimit
                 }
                 dailyCashWithdrawalLimit = new TransactionLimit().tap{
-                    value = cardProgram.defaultDailyCashWithdrawalLimit
+                    limit = cardProgram.defaultDailyCashWithdrawalLimit
                 }
                 perTransactionLimit = new TransactionLimit()
                 monthlyTransactionLimit = new TransactionLimit()

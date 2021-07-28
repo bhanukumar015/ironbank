@@ -22,7 +22,7 @@ class PctWithMinAndMaxStrategy extends FeeStrategy {
     @Override
     Double getFee(Double inputValue) {
         Double percentValue = (inputValue * percentOfOutstanding/100)
-        return percentValue > minFee ? Math.min(percentOfOutstanding, maxFee) : minFee
+        return percentValue > minFee ? Math.min(percentValue, maxFee) : minFee
     }
 
     @Override

@@ -8,6 +8,7 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo
 @JsonIgnoreProperties(ignoreUnknown = true)
 @JsonSubTypes([
         @JsonSubTypes.Type(value = LatePaymentFee.class, name = "latePaymentFee"),
+        @JsonSubTypes.Type(value = JoiningFee.class, name = "joiningFee"),
 ])
 abstract class Fee {
 }

@@ -42,6 +42,9 @@ class Card implements PaymentInstrument {
     Boolean isLocked = false
     Boolean hotlisted = false
 
+    Boolean isFirstPurchaseDone
+    Boolean isFirstRepaymentDone
+
     @ManyToOne
     @JoinColumn(name = "card_control_id")
     CardControl cardControl

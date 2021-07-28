@@ -19,6 +19,8 @@ class SystemTransaction extends Transaction {
     ZonedDateTime executeAfter
     ZonedDateTime executedOn
 
+    String transactionReferenceId
+
     @Enumerated(EnumType.STRING)
     FeeType feeType
 }
