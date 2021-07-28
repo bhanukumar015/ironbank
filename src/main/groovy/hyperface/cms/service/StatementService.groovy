@@ -23,6 +23,7 @@ import hyperface.cms.model.enums.LedgerTransactionType
 import hyperface.cms.repository.CardProgramRepository
 import hyperface.cms.repository.CardRepository
 import hyperface.cms.repository.CreditAccountRepository
+import hyperface.cms.repository.CustomerTransactionRepository
 import hyperface.cms.repository.TransactionLedgerRepository
 import hyperface.cms.service.pdfbox.PDFBoxService
 import hyperface.cms.service.pdfbox.PDFBoxServiceImpl
@@ -39,6 +40,9 @@ import org.apache.pdfbox.pdmodel.graphics.color.PDColorSpace
 import org.apache.pdfbox.pdmodel.graphics.color.PDDeviceRGB
 import org.apache.pdfbox.pdmodel.graphics.image.JPEGFactory
 import org.apache.pdfbox.pdmodel.graphics.image.PDImageXObject
+import org.apache.pdfbox.pdmodel.interactive.action.PDActionURI
+import org.apache.pdfbox.pdmodel.interactive.annotation.PDAnnotationLink
+import org.apache.pdfbox.pdmodel.interactive.annotation.PDBorderStyleDictionary
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Service
 import org.springframework.util.ResourceUtils
@@ -62,12 +66,25 @@ class StatementService {
     TransactionLedgerRepository transactionLedgerRepository
 
     @Autowired
-    PDFBoxService pdfBoxService
+    CustomerTransactionRepository customerTransactionRepository
+
+    @Autowired
+    PDFBoxServiceImpl pdfBoxService
+
+
+    File circleFile = ResourceUtils.getFile("classpath:images/statement/circle.png")
+    File appStoreFile = ResourceUtils.getFile("classpath:images/statement/appstore.png")
+    File playStoreFile = ResourceUtils.getFile("classpath:images/statement/playstore.png")
+    File hdfcFile = ResourceUtils.getFile("classpath:images/statement/hdfcbank.png")
+    File hyperfaceFile = ResourceUtils.getFile("classpath:images/statement/hyperface-logo.png")
+    File visaFile = ResourceUtils.getFile("classpath:images/statement/visa.png")
+    File cardBGFile = ResourceUtils.getFile("classpath:images/statement/black_bg.png")
 
     //1px = 0.75pts
     PDPage pdPage = new PDPage(PDRectangle.A4)
     PDFont helvetica_bold = PDType1Font.HELVETICA_BOLD
     PDFont helvetica = PDType1Font.HELVETICA
+
     float borderW = 18.75 //25px
     float tW = pdPage.getMediaBox().getWidth() //595
     float tH = pdPage.getMediaBox().getHeight() //842
@@ -77,32 +94,17 @@ class StatementService {
     float y = tH
     float th = 0.75 //thickness
     float footerH = 150
+    float cardW = 150
+    float cardH = 90
+    float cellPadding = 10
+    float[] black = [0/255f, 0/255f, 0/255f]
+    float[] white = [255/255f, 255/255f, 255/255f]
+    float[] lightGrey = [145/255f, 145/255f, 145/255f]
+    float[] darkGrey = [89 / 255f, 89 / 255f, 89 / 255f]
+    float[] blue = [35/255f, 96/255f, 232/255f]
+    float[] green = [22/255f, 99/255f, 51/255f] //client logo dominant color
 
-
-    //Getters: annotate later todo: remove initials
-    float bankLogoW = 100.00
-    float bankLogoH = 25.00
-    float clientLogoW = 80.00
-    float clientLogoH = 25.00
-
-    float[] rgb = [0 / 255f, 0 / 255f, 0 / 255f]
-
-    String text
     float fontSize
-
-    /*char IND_CURRENCY_SYMBOL = '₹'
-    Encoding ee = Encoding.getInstance(COSName.WIN_ANSI_ENCODING)
-    String rupee = String.valueOf(Character.toChars(ee.getNameToCodeMap().get("Euro")))*/
-
-    File circleFile = ResourceUtils.getFile("classpath:images/statement/circle.png")
-    File appStoreFile = ResourceUtils.getFile("classpath:images/statement/appstore.png")
-    File playStoreFile = ResourceUtils.getFile("classpath:images/statement/playstore.png")
-    File hdfcFile = ResourceUtils.getFile("classpath:images/statement/hdfcbank.png")
-    File hyperfaceFile = ResourceUtils.getFile("classpath:images/statement/hyperface-logo.png")
-    File visaFile = ResourceUtils.getFile("classpath:images/statement/visa.png")
-
-    float[] colW
-    List<List<String>> content = new ArrayList<>()
     float rowH
     float textW
     float imgW
@@ -111,44 +113,34 @@ class StatementService {
     float sx
     float sy
     float margin
-
-    float cardW = 150
-    float cardH = 90
-
-    float[] black = [0/255f, 0/255f, 0/255f]
-    float[] white = [255/255f, 255/255f, 255/255f]
-    float[] lightGrey = [145/255f, 145/255f, 145/255f]
-    float[] darkGrey = [89 / 255f, 89 / 255f, 89 / 255f]
-    float[] blue = [35/255f, 96/255f, 232/255f]
-    float[] green = [22/255f, 99/255f, 51/255f] //client logo dominant color
-
-    int wrapLength
-    float cellPadding = 10
-
     float blockW
     float blockH
 
     int maxRows
     int start
     int end
+    int wrapLength
 
-    List<List<String>> list = new ArrayList<>()
-    List<List<String>> amounts
-    String addr;
+    float[] colW
 
-    //Ideally fetch from ENUM
+    String text
+    String addr = "124, Bond Street, Kolkata-310001" //todo: remove hardcoding
+
+    List<List<String>> content = new ArrayList<>()
+    List<List<String>> txnAmountList
+
+    //todo: fetch values from ENUM
     String[] reversal_list = ['Auth Reversal', 'Refund', 'Refund Reversal', 'Purchase Reversal',
                               'Cashback Reversal', 'Fee Reversal', 'Repayment Reversal', 'Cash Withdrawal Reversal', 'Tax Reversal']
     String[] cash_list = ['Settle Debit Cash', 'Settle Credit Cash', 'Cash Withdrawal']
 
     Customer customer = new Customer()
-    CardStatement statement = new CardStatement()
+    CardStatement statement
     CreditAccount creditAccount = new CreditAccount()
     Client client = new Client()
     Card card = new Card()
     CreditCardProgram cardProgram = new CreditCardProgram()
     List<TransactionLedger> ledgerList = new ArrayList<>()
-    List<CustomerTransaction> customerTransactions = new ArrayList<>()
 
     List<TransactionLedger> payments = new ArrayList<>()
     List<TransactionLedger> fees = new ArrayList<>()
@@ -156,108 +148,66 @@ class StatementService {
     List<TransactionLedger> reversals = new ArrayList<>()
     List<TransactionLedger> txns = new ArrayList<>()
 
-    List<CustomerTransaction> domesticTxns = new ArrayList<>()
-    List<CustomerTransaction> domesticCashTxns = new ArrayList<>()
-    List<CustomerTransaction> internationalTxns = new ArrayList<>()
-    List<CustomerTransaction> internationCashTxns = new ArrayList<>()
+    List<TransactionLedger> domesticTxns = new ArrayList<>()
+    List<TransactionLedger> domesticCashTxns = new ArrayList<>()
+    List<TransactionLedger> internationalTxns = new ArrayList<>()
+    List<TransactionLedger> internationCashTxns = new ArrayList<>()
 
-    PDDocument generateStatement(CardStatement statement) {
-        Date from = Utilities.getStatementStartDate(statement.getDueDate())
-        Date to = Utilities.getStatementEndDate(statement.getDueDate())
+    ZonedDateTime from
+    ZonedDateTime to
 
+    PDDocument generateStatement(CardStatement cardStatement) {
+        from = Utilities.getStatementStartDate(statement.getDueDate())
+        to = Utilities.getStatementEndDate(statement.getDueDate())
+
+        statement = cardStatement
         creditAccount = creditAccountRepository.findById(statement.getId())
-        customer = creditAccountRepository.findByCustomerId(creditAccount.get().customer.getId())
+        customer = creditAccountRepository.findByCustomerId(creditAccount.getCustomer().getId())
         card = cardRepository.findByCreditAccount(creditAccount) //todo: include isPrimary constraint later
         cardProgram = card.getCardProgram()
         client = cardProgram.getClient()
-        ledgerList = transactionLedgerRepository.findAllByCreditAccountInRange(creditAccount, from, to)
-        //From where to fetch Bank image
-
-    }
-
-    PDDocument generateDummyStatement() {
-        Date from = new Date()
-        Date to = new Date()
-
-        Address address = new Address();
-        address.setLine1("line1")
-        address.setLine2("line2")
-        address.setCity("Bangalore")
-        address.setState("karnataka")
-        address.setCountry("India")
-        address.setLandmark("Near Hyperface")
-        address.setCountryCodeIso("IND")
-
-        //need to convert address to string without exceeding max width ??
-        addr = "124, Bond Street, Kolkata-310001"
-
-
-        customer.setId("1")
-        customer.setFirstName("Wilson")
-        customer.setLastName("Fisk")
-        customer.setPreferredName(customer.getFirstName())
-        customer.setDateOfBirth("11 May 2021")
-        customer.setEmail("wilson@mail.com")
-        customer.setMobile("8998899889")
-        customer.setCurrentAddress(address)
-        customer.setPermanentAddress(address)
-
-
-        creditAccount.setId("1")
-        creditAccount.setApprovedCreditLimit(10000.00)
-        creditAccount.setAvailableCreditLimit(10000.00)
-        creditAccount.setCustomer(customer)
-
-        card.setCreditAccount(creditAccount)
-        card.setLastFourDigits("1234") //what about first four digits??
-
-        client.setName("Chaipoint")
-
-        statement.setCreditAccount(creditAccount)
-        statement.setTotalAmountDue(1200.33)
-        statement.setMinAmountDue(200.00)
-        statement.setDueDate(ZonedDateTime.now())
-        statement.setTotalCredits(100.00)
-        statement.setTotalDebits(100.00)
-        statement.setOpeningBalance(0.00)
-        statement.setClosingBalance(-100.00)
-        statement.setDeferredInterest(0.00)
-        statement.setResidualInterest(0.00)
-        statement.setUnpaidResidualBalance(0.00)
-        statement.setBilledInterest(0.00)
-        statement.setWaivedInterest(0.00)
-        statement.setNetTaxOnInterest(0.00)
-        statement.setNetTaxOnFees(0.00)
-        statement.setNetFinanceCharges(0.00)
-        statement.setNetFeeCharges(0.00)
-        statement.setNetRepayments(0.00)
-        statement.setRefunds(20.00)
-        statement.setNetCashback(20.00)
-        statement.setNetPurchases(3200)
-        statement.setBillingCycleNumber(2)
-        statement.setGeneratedOn(ZonedDateTime.now())
+        //ledgerList = transactionLedgerRepository.findAllByCreditAccountInRange(creditAccount, from, to) todo: Impl
 
         for(TransactionLedger ledgerTxn: ledgerList) {
-            if(ledgerTxn.getTransactionType().equals(LedgerTransactionType.REPAYMENT)) {
+            if(ledgerTxn.getTransactionType() == LedgerTransactionType.REPAYMENT) {
                 payments.add(ledgerTxn)
-            } else if (ledgerTxn.getTransactionType().equals(LedgerTransactionType.FEE)) { //todo: Ques: Auth=
+            } else if (ledgerTxn.getTransactionType() == LedgerTransactionType.FEE) { //todo: Auth Type
                 fees.add(ledgerTxn)
-            } else if (ledgerTxn.getTransactionType().equals(LedgerTransactionType.EMI)) {
+            } else if (ledgerTxn.getTransactionType() == LedgerTransactionType.EMI) {
                 emis.add(ledgerTxn)
             } else if (reversal_list.contains(ledgerTxn.getTransactionType())) {
                 reversals.add(ledgerTxn)
             } else {
+                println "Hello"
+                println(ledgerTxn.getTransactionType())
                 txns.add(ledgerTxn)
             }
         }
 
         for(TransactionLedger txn: txns) {
-            CustomerTransaction customerTransaction = new CustomerTransaction() // Ideally find by txn.id
-
-            //how to find domestic, domestic_cash, international, international_cash?
+            Optional<CustomerTransaction> customerTransaction = customerTransactionRepository.findById(txn.transaction.id)
+            if(customerTransaction.isPresent()) {
+                if(customerTransaction.get().getTransactionCurrency() == "INR") { //todo: refer from enum
+                    if(cash_list.contains(txn.getTransactionType())) {
+                        domesticCashTxns.add(txn)
+                    } else {
+                        domesticTxns.add(txn)
+                    }
+                } else {
+                    if(cash_list.contains(txn.getTransactionType())) {
+                        internationCashTxns.add(txn)
+                    } else {
+                        internationalTxns.add(txn)
+                    }
+                }
+            } else {
+                if(cash_list.contains(txn.getTransactionType())) {
+                    domesticCashTxns.add(txn)
+                } else {
+                    domesticTxns.add(txn)
+                }
+            }
         }
-
-
         pdfBoxService.addA4Page()
         drawHeader(true)
         drawStatementSummary()
@@ -265,6 +215,8 @@ class StatementService {
 
         content = [["Opening Balance", "Earned", "Redeemed/Expired", "Available for Redemption"],
                    ["2000.00", "2000.00", "200.00", "23.50"]]
+
+        //todo: Reward Program logic to be implemented later
         drawRewardsProgramSummary(false, content)
         //content = [["Cashback Credited", "Cashback reversals/adjustment", "Net cashback earned this month", "Total cashback earned till date"],
         //                   ["2000.00", "2000.00", "200.00", "23.50"]]
@@ -276,6 +228,7 @@ class StatementService {
         addNewPage()
         drawLastPage()
         pdfBoxService.close()
+
         return pdfBoxService.getDocument()
     }
 
@@ -312,7 +265,7 @@ class StatementService {
 
             imgW = 85.0
             imgH = 21.0
-            //todo: FIX
+            //todo: fetch image from client object
             pdfBoxService.drawImage(getImageXObjectFromFile(hdfcFile), updateX((w - imgW) as float), y, imgW, imgH)
 
             updateX(-x + borderW as float)
@@ -321,8 +274,8 @@ class StatementService {
 
             //second layer
             fontSize = 7.5f
-            text = Utilities.convertDateToCustomFormat(new Date(), Constants.MMM_SPACE_DD_COMMA_SPACE_YYYY) <<
-                    " - " << Utilities.convertDateToCustomFormat(new Date(), Constants.MMM_SPACE_DD_COMMA_SPACE_YYYY)
+            text = Utilities.convertDateToCustomFormat(from, Constants.MMM_SPACE_DD_COMMA_SPACE_YYYY) <<
+                    " - " << Utilities.convertDateToCustomFormat(to, Constants.MMM_SPACE_DD_COMMA_SPACE_YYYY)
             pdfBoxService.writeText(helvetica, white, fontSize, x, updateY(-(margin + fontSize) as float), 0, text.length(), text)
 
             text = "Card Number"
@@ -330,7 +283,7 @@ class StatementService {
             //max width for static strings
 
             fontSize = 13.5
-            text = client.getName() << " Card Statement" //What if Name is larger??
+            text = client.getName() << " Card Statement"
             pdfBoxService.writeText(helvetica_bold, white, fontSize, x, updateY(-(3 + fontSize) as float), 0, 30, text)
 
             th = 0.35f
@@ -348,8 +301,8 @@ class StatementService {
             float cellMargin = 25
             text = "Statement Date"
             pdfBoxService.writeText(helvetica, white, 8, x, updateY(-(margin + 8) as float), 0, text.length(), text)
-            //todo: FIX which date?
-            pdfBoxService.writeText(helvetica_bold, white, 10, x, y - 15 as float, 0, 11, Utilities.convertDateToCustomFormat(new Date(), Constants.DD_SPACE_MMM_SPACE_YYYY))
+            //todo: FIX date value
+            pdfBoxService.writeText(helvetica_bold, white, 10, x, y - 15 as float, 0, 11, Utilities.convertDateToCustomFormat(ZonedDateTime.now(), Constants.DD_SPACE_MMM_SPACE_YYYY))
 
             updateX(pdfBoxService.getTextWidth(helvetica, 8, text) + cellMargin as float)
             pdfBoxService.drawSolidLine(white, x, y + 2 as float, x, y - 12 as float, th)
@@ -358,7 +311,7 @@ class StatementService {
             text = "Credit Limit"
             pdfBoxService.writeText(helvetica, white, 8, x, y, 0, text.length(), text)
             pdfBoxService.writeText(helvetica_bold, white, 10, x, y - 15 as float, 0, 12, creditAccount.getApprovedCreditLimit().toString())
-            //todo: credit limit and rupee symbol
+            //todo: Add rupee symbol
 
             updateX(pdfBoxService.getTextWidth(helvetica, 8, text) + cellMargin as float)
             pdfBoxService.drawSolidLine(white, x, y + 2 as float, x, y - 12 as float, th)
@@ -374,21 +327,20 @@ class StatementService {
             updateX(cellMargin)
             text = "Available Cash Limit"
             pdfBoxService.writeText(helvetica, white, 8, x, y, 0, text.length(), text)
-            pdfBoxService.writeText(helvetica_bold, white, 10, x, y - 15 as float, 0, 12, "Rs. 10000")
-            //todo: FIX available cash limit
+            pdfBoxService.writeText(helvetica_bold, white, 10, x, y - 15 as float, 0, 12, creditAccount.getAvailableCashWithdrawalLimit().toString())
 
             drawCardDisplay()
         } else {
             fontSize = 15
             x = borderW
             updateY(-borderW - fontSize as float)
-            text = client.getName() << " Card Statement" //What if Name is larger??
+            text = client.getName() << " Card Statement"
             pdfBoxService.writeText(helvetica_bold, green, fontSize, x, y, 0, 50, text)
 
             imgW = 84.75
             imgH = 21.0
             updateX(w - imgW as float)
-            pdfBoxService.drawImage(getImageXObjectFromFile(hdfcFile), x, y, imgW, imgH) //todo: need to change imageXObject
+            pdfBoxService.drawImage(getImageXObjectFromFile(hdfcFile), x, y, imgW, imgH)  //todo: read from appropriate bank image
 
             updateX(-5)
             pdfBoxService.drawSolidLine(lightGrey, x, y + 5 as float, x, y + 5 as float, th)
@@ -396,7 +348,7 @@ class StatementService {
             imgW = 67.5 //90px
             imgH = 21.0 //28px
             updateX(-20 - imgW as float)
-            pdfBoxService.drawImage(getImageXObjectFromFile(hdfcFile), x, y, imgW, imgH) //client image
+            pdfBoxService.drawImage(getImageXObjectFromFile(hdfcFile), x, y, imgW, imgH) //todo: need to change client imageXObject
 
             x = borderW
             y = (tH - 50) as float //move to a variable later
@@ -405,12 +357,9 @@ class StatementService {
     }
 
     private drawCardDisplay() {
-        File file = ResourceUtils.getFile("classpath:images/statement/black_bg.png")
-
         x = (tW - borderW - cardW) as float
         y = (tH - ((1 / 3) * headerH) - margin - cardH) as float
-        pdfBoxService.drawImage(getImageXObjectFromFile(file), x, y, cardW, cardH)
-
+        pdfBoxService.drawImage(getImageXObjectFromFile(cardBGFile), x, y, cardW, cardH)
 
         float padding = 11.25
         float lx = x + padding as float //
@@ -419,7 +368,7 @@ class StatementService {
         float ty = y + cardH - padding as float //
         pdfBoxService.drawImage(getImageXObjectFromFile(hdfcFile), lx, ty - 10 as float, 42, 10)
         pdfBoxService.drawImage(getImageXObjectFromFile(hdfcFile), rx - 32 as float, ty - 8 as float, 32, 10)
-        //todo: FIX name on card: where to fetch
+        //todo: FIX name on card: from where to fetch
         pdfBoxService.writeText(helvetica_bold, white, 10, lx, by, 0, 20, "RAMANATHAN R")
         pdfBoxService.drawImage(getImageXObjectFromFile(visaFile), rx - 25 as float, by, 25, 10) //visa image ??
         pdfBoxService.drawImage(getImageXObjectFromFile(hdfcFile), lx, y + (cardH / 2) as float, 17, 15) // simcard image
@@ -437,6 +386,7 @@ class StatementService {
 
         updateY(-margin)
 
+        //todo: addr value to be calculated
         String address = "Personal Info: " << Constants.DELIMITER <<
                 addr << Constants.DELIMITER <<
                 customer.getEmail() << Constants.DELIMITER <<
@@ -480,7 +430,6 @@ class StatementService {
         fontSize = 10
         y = (tH - headerH - borderW - fontSize) as float
 
-        rgb = [0 / 255f, 0 / 255f, 0 / 255f]
         pdfBoxService.writeText(helvetica_bold, black, fontSize, x, y, 0, 30, "Statement Illustration")
 
         updateY(-margin)
@@ -511,7 +460,7 @@ class StatementService {
                    ["Rs. " + String.valueOf(statement.netCashback)]]
         pdfBoxService.writeTableContents(black, content, sx + (w / 4) + 5 as float, sy, 20, [(w / 4) - 5 - (2 * margin)] as float[], 0, 10, 9, helvetica_bold, [Constants.ALIGN_RIGHT] as char[])
 
-        sy = y - (2 * blockH) - margin
+        sy = (y - (2 * blockH) - margin) as float
         pdfBoxService.drawSolidLine(lightGrey, sx, sy, sx + w / 2 - (2 * margin) as float, sy, th)
         pdfBoxService.drawSolidLine(lightGrey, sx, sy + 30 as float, sx + w / 2 - (2 * margin) as float, sy + 30 as float, th)
 
@@ -526,19 +475,19 @@ class StatementService {
         x = borderW
         fontSize = 10
         y = (tH / 2 - 80) as float
-        pdfBoxService.writeText(helvetica_bold, rgb, fontSize, x, y, 0, text.length(), text)
+        pdfBoxService.writeText(helvetica_bold, black, fontSize, x, y, 0, text.length(), text)
 
         if (!isCashbackApplicable) {
             text = "Rewards Points expiring in 30 days: 200"
             textW = pdfBoxService.getTextWidth(helvetica_bold, 8, text) as float
-            pdfBoxService.writeText(helvetica_bold, rgb, 8, x + w - textW as float, y, 0, text.length(), text)
+            pdfBoxService.writeText(helvetica_bold, black, 8, x + w - textW as float, y, 0, text.length(), text)
         }
 
         updateY(-20)
         rowH = 30
         colW = [w / 4, w / 4, w / 4, w / 4]
         pdfBoxService.drawRect([242 / 255f, 242 / 255f, 242 / 255f] as float[], x, y - rowH as float, w, rowH)
-        pdfBoxService.writeTableContents(rgb, content, x, y, rowH, colW, 15, 14, 8, helvetica_bold, [Constants.ALIGN_LEFT, Constants.ALIGN_LEFT, Constants.ALIGN_LEFT, Constants.ALIGN_LEFT] as char[])
+        pdfBoxService.writeTableContents(black, content, x, y, rowH, colW, 15, 14, 8, helvetica_bold, [Constants.ALIGN_LEFT, Constants.ALIGN_LEFT, Constants.ALIGN_LEFT, Constants.ALIGN_LEFT] as char[])
         pdfBoxService.drawTableBorders(lightGrey, content.size(), content[0].size(), x, y, rowH, w, colW, true, true)
     }
 
@@ -546,7 +495,7 @@ class StatementService {
         x = borderW
         updateY(-2 * rowH - 50 as float)
         fontSize = 10
-        pdfBoxService.writeText(helvetica_bold, rgb, fontSize, x, y, 0, 30, "Payment Options")
+        pdfBoxService.writeText(helvetica_bold, black, fontSize, x, y, 0, 30, "Payment Options")
 
         updateY(-margin)
         pdfBoxService.drawSolidLine(lightGrey, x, y, x + w as float, y, th)
@@ -581,7 +530,7 @@ class StatementService {
 
         sx += (30)
         pdfBoxService.writeText(helvetica_bold, blue, 6.5, sx, sy - 12.5 as float, 0, 22, "www.chai.pt/PlayStore")
-        // todo: need to make it clickable
+        // todo: need to make it hyperlink
         pdfBoxService.writeText(helvetica_bold, blue, 6.5, sx, sy - 27.5 as float, 0, 22, "www.chai.pt/AppStore")
     }
 
@@ -598,11 +547,12 @@ class StatementService {
         content = [["Account no:", "10001239999"], ["IFSC:", "HDFC0000011"], ["Bank Name:", "Hdfc Bank"], ["Branch:", "WodeHouse Road,"], ["", "Colaba, Mumbai"]]
         for (int i = 0; i < content.size(); i++) {
             float textW = pdfBoxService.getTextWidth(helvetica, 8, content[i][0])
-            pdfBoxService.writeText(helvetica, rgb, 8, sx, sy, 0, 100, content[i][0])
-            pdfBoxService.writeText(helvetica_bold, rgb, 8, sx + textW + 2.5 as float, sy, 0, 100, content[i][1])
+            pdfBoxService.writeText(helvetica, black, 8, sx, sy, 0, 100, content[i][0])
+            pdfBoxService.writeText(helvetica_bold, black, 8, sx + textW + 2.5 as float, sy, 0, 100, content[i][1])
             sy += (-12)
         }
 
+        //todo: remove hardcoding
         sx += (w / 2 + margin)
         sy += (content.size() * 12)
         text = "10001239999@HDFC"
@@ -644,7 +594,7 @@ class StatementService {
     private void writePaymentOptionsHeading(float sx, float sy, float w, String text) {
         sy += (-fontSize)
         textW = pdfBoxService.getTextWidth(helvetica_bold, fontSize, text)
-        pdfBoxService.writeText(helvetica_bold, rgb, fontSize, (sx + (w - textW) / 2) as float, sy, 0, 100, text)
+        pdfBoxService.writeText(helvetica_bold, black, fontSize, (sx + (w - textW) / 2) as float, sy, 0, 100, text)
         textW = pdfBoxService.getTextWidth(helvetica_bold, fontSize, text)
         pdfBoxService.drawSolidLine(lightGrey, (sx + (w - textW) / 2) as float, sy - 4 as float, (sx + (w + textW) / 2) as float, sy - 4 as float, th)
     }
@@ -675,7 +625,7 @@ class StatementService {
 
     private void drawTransactions() {
         rowH = 30
-        maxRows = ((tH - 50) / rowH) - 1 as int// todo: temporary // i Should map this with effevtive Height of the page
+        maxRows = ((tH - 50) / rowH) - 1 as int
         println(maxRows) //todo: remove
 
         x = borderW
@@ -686,41 +636,54 @@ class StatementService {
         drawEMITxns()
         drawReversalsAndRefunds()
         drawDomesticTxns()
+        drawDomesticCashTxns()
         drawInternationalTxns()
+        drawInternationCashTxns()
     }
 
     //think of a proper name
-    private void drawTransactionalRows() {
+    private void drawTransactionalRows(List<TransactionLedger> ledgerList) {
+        content = new ArrayList<>()
+        txnAmountList = new ArrayList<>()
+        for(TransactionLedger transactionLedger: ledgerList) {
+            List<String> transaction = new ArrayList<>()
+            transaction.add(Utilities.convertDateToCustomFormat(transactionLedger.postingDate, Constants.DD_SLASH_MM_SLASH_YYYY))
+            transaction.add(transactionLedger.txnDescription)
+            content.add(transaction)
+            txnAmountList.add(Collections.singletonList(String.valueOf(transactionLedger.transactionAmount)))
+        }
+
         if(y < 2*rowH) {
             addNewPage()
         }
 
-        int tempRows = (y / rowH) - 1 as int
-        println("tempRows: ${tempRows}") //todo: remove
+        int currRows = (y / rowH) - 1 as int
         start = 0
-        end = Math.min(tempRows, content.size()) - 1
+        end = Math.min(currRows, content.size()) - 1
 
         while(end != content.size() - 1) {
-            list = content[start..end]
-            drawTransactionContent(list)
-            drawTransactionAmounts(amounts[start..end])
+            drawTransactionContent(content[start..end])
+            drawTransactionAmounts(txnAmountList[start..end])
             addNewPage()
             start = end + 1
             end = Math.min(start + maxRows, content.size()) - 1
         }
 
-        if(list.size() > 0) {
-            list = content[start..end]
-            drawTransactionContent(list)
-            drawTransactionAmounts(amounts[start..end])
+        if((end - start + 1) > 0) {
+            drawTransactionContent(content[start..end])
+            drawTransactionAmounts(txnAmountList[start..end])
         }
-        updateY(-(rowH * (list.size() + 1) - 20) as float)
+        updateY(-(rowH * ((end - start + 1) + 1) - 20) as float)
+
         if(y < 2*rowH) {
             addNewPage()
         }
     }
 
     private void drawPayments() {
+        if(payments.size() == 0) {
+            return
+        }
 
         pdfBoxService.writeText(helvetica_bold, black, 12, x, updateY(-25), 0, 100, "Transactions for your account")
         pdfBoxService.writeText(helvetica_bold, black, 10, x, updateY(-25), 0, 100, "Payments")
@@ -729,71 +692,25 @@ class StatementService {
         pdfBoxService.drawSolidLine(black, x, y, x + w as float, y, th)
         content = [["Date", "Merchant", "Amount"]]
         drawTransactionHeading(content)
-        content = [["30/4/2021", "IMPS PAYMENT"], ["30/4/2021", "CREDIT CARD PAYMENT"], ["30/4/2021", "CREDIT CARD PAYMENT"],
-                   ["30/4/2021", "IMPS PAYMENT"], ["30/4/2021", "CREDIT CARD PAYMENT"], ["30/4/2021", "CREDIT CARD PAYMENT"],
-                   ["30/4/2021", "IMPS PAYMENT"], ["30/4/2021", "CREDIT CARD PAYMENT"], ["30/4/2021", "CREDIT CARD PAYMENT"],
-                   ["30/4/2021", "IMPS PAYMENT"], ["30/4/2021", "CREDIT CARD PAYMENT"], ["30/4/2021", "CREDIT CARD PAYMENT"],
-                   ["30/4/2021", "IMPS PAYMENT"], ["30/4/2021", "CREDIT CARD PAYMENT"], ["30/4/2021", "CREDIT CARD PAYMENT"],
-                   ["30/4/2021", "IMPS PAYMENT"], ["30/4/2021", "CREDIT CARD PAYMENT"], ["30/4/2021", "CREDIT CARD PAYMENT"],
-                   ["30/4/2021", "IMPS PAYMENT"], ["30/4/2021", "CREDIT CARD PAYMENT"], ["30/4/2021", "CREDIT CARD PAYMENT"],
-                   ["30/4/2021", "IMPS PAYMENT"], ["30/4/2021", "CREDIT CARD PAYMENT"], ["30/4/2021", "CREDIT CARD PAYMENT"],
-                   ["30/4/2021", "IMPS PAYMENT"], ["30/4/2021", "CREDIT CARD PAYMENT"], ["30/4/2021", "CREDIT CARD PAYMENT"],
-                   ["30/4/2021", "IMPS PAYMENT"], ["30/4/2021", "CREDIT CARD PAYMENT"], ["30/4/2021", "CREDIT CARD PAYMENT"],
-                   ["30/4/2021", "IMPS PAYMENT"], ["30/4/2021", "CREDIT CARD PAYMENT"], ["30/4/2021", "CREDIT CARD PAYMENT"],
-                   ["30/4/2021", "IMPS PAYMENT"], ["30/4/2021", "CREDIT CARD PAYMENT"], ["30/4/2021", "CREDIT CARD PAYMENT"]]
-        amounts = [["Rs. 55000.00"], ["Rs. 2000.00"], ["Rs. 2000.00"],
-                   ["Rs. 55000.00"], ["Rs. 2000.00"], ["Rs. 2000.00"],
-                   ["Rs. 55000.00"], ["Rs. 2000.00"], ["Rs. 2000.00"],
-                   ["Rs. 55000.00"], ["Rs. 2000.00"], ["Rs. 2000.00"],
-                   ["Rs. 55000.00"], ["Rs. 2000.00"], ["Rs. 2000.00"],
-                   ["Rs. 55000.00"], ["Rs. 2000.00"], ["Rs. 2000.00"],
-                   ["Rs. 55000.00"], ["Rs. 2000.00"], ["Rs. 2000.00"],
-                   ["Rs. 55000.00"], ["Rs. 2000.00"], ["Rs. 2000.00"],
-                   ["Rs. 55000.00"], ["Rs. 2000.00"], ["Rs. 2000.00"],
-                   ["Rs. 55000.00"], ["Rs. 2000.00"], ["Rs. 2000.00"],
-                   ["Rs. 55000.00"], ["Rs. 2000.00"], ["Rs. 2000.00"],
-                   ["Rs. 55000.00"], ["Rs. 2000.00"], ["Rs. 2000.00"]]
-        drawTransactionalRows()
+        drawTransactionalRows(payments)
     }
 
     private void drawOtherFeesAndCharges() {
+        if(fees.size() == 0) {
+            return
+        }
         pdfBoxService.writeText(helvetica_bold, black, 10, x, updateY(-25), 0, 100, "Other Fees & Charges")
         updateY(-15)
         pdfBoxService.drawSolidLine(black, x, y, x + w as float, y, th)
         content = [["Date", "Merchant", "Amount"]]
         drawTransactionHeading(content)
-        content = [["30/4/2021", "IMPS PAYMENT"], ["30/4/2021", "CREDIT CARD PAYMENT"], ["30/4/2021", "CREDIT CARD PAYMENT"],
-                   ["30/4/2021", "IMPS PAYMENT"], ["30/4/2021", "CREDIT CARD PAYMENT"], ["30/4/2021", "CREDIT CARD PAYMENT"],
-                   ["30/4/2021", "IMPS PAYMENT"], ["30/4/2021", "CREDIT CARD PAYMENT"], ["30/4/2021", "CREDIT CARD PAYMENT"],
-                   ["30/4/2021", "IMPS PAYMENT"], ["30/4/2021", "CREDIT CARD PAYMENT"], ["30/4/2021", "CREDIT CARD PAYMENT"],
-                   ["30/4/2021", "IMPS PAYMENT"], ["30/4/2021", "CREDIT CARD PAYMENT"], ["30/4/2021", "CREDIT CARD PAYMENT"],
-                   ["30/4/2021", "IMPS PAYMENT"], ["30/4/2021", "CREDIT CARD PAYMENT"], ["30/4/2021", "CREDIT CARD PAYMENT"],
-                   ["30/4/2021", "IMPS PAYMENT"], ["30/4/2021", "CREDIT CARD PAYMENT"], ["30/4/2021", "CREDIT CARD PAYMENT"],
-                   ["30/4/2021", "IMPS PAYMENT"], ["30/4/2021", "CREDIT CARD PAYMENT"], ["30/4/2021", "CREDIT CARD PAYMENT"],
-                   ["30/4/2021", "IMPS PAYMENT"], ["30/4/2021", "CREDIT CARD PAYMENT"], ["30/4/2021", "CREDIT CARD PAYMENT"],
-                   ["30/4/2021", "IMPS PAYMENT"], ["30/4/2021", "CREDIT CARD PAYMENT"], ["30/4/2021", "CREDIT CARD PAYMENT"],
-                   ["30/4/2021", "IMPS PAYMENT"], ["30/4/2021", "CREDIT CARD PAYMENT"], ["30/4/2021", "CREDIT CARD PAYMENT"],
-                   ["30/4/2021", "IMPS PAYMENT"], ["30/4/2021", "CREDIT CARD PAYMENT"], ["30/4/2021", "CREDIT CARD PAYMENT"]]
-        amounts = [["Rs. 55000.00"], ["Rs. 2000.00"], ["Rs. 2000.00"],
-                   ["Rs. 55000.00"], ["Rs. 2000.00"], ["Rs. 2000.00"],
-                   ["Rs. 55000.00"], ["Rs. 2000.00"], ["Rs. 2000.00"],
-                   ["Rs. 55000.00"], ["Rs. 2000.00"], ["Rs. 2000.00"],
-                   ["Rs. 55000.00"], ["Rs. 2000.00"], ["Rs. 2000.00"],
-                   ["Rs. 55000.00"], ["Rs. 2000.00"], ["Rs. 2000.00"],
-                   ["Rs. 55000.00"], ["Rs. 2000.00"], ["Rs. 2000.00"],
-                   ["Rs. 55000.00"], ["Rs. 2000.00"], ["Rs. 2000.00"],
-                   ["Rs. 55000.00"], ["Rs. 2000.00"], ["Rs. 2000.00"],
-                   ["Rs. 55000.00"], ["Rs. 2000.00"], ["Rs. 2000.00"],
-                   ["Rs. 55000.00"], ["Rs. 2000.00"], ["Rs. 2000.00"],
-                   ["Rs. 55000.00"], ["Rs. 2000.00"], ["Rs. 2000.00"]]
-
-
-        drawTransactionalRows()
+        drawTransactionalRows(fees)
     }
 
     private void drawEMITxns() {
-        int tempRows = 1 //todo: remove.. calculate from height
-
+        if(emis.size() == 0) {
+            return
+        }
         pdfBoxService.writeText(helvetica_bold, black, 10, x, updateY(-25), 0, 100, "Transactions for your Card ending: XXXX XXXX XXXX 1234 - Ramnathan R")
         updateY(-15)
         pdfBoxService.writeText(helvetica_bold, black, 10, x, updateY(-25), 0, 100, "EMIs")
@@ -801,62 +718,64 @@ class StatementService {
         pdfBoxService.drawSolidLine(black, x, y, x + w as float, y, th)
         content = [["Date", "Merchant", "Amount"]]
         drawTransactionHeading(content)
-        content = [["30/4/2021", "IMPS PAYMENT"], ["30/4/2021", "CREDIT CARD PAYMENT"], ["30/4/2021", "CREDIT CARD PAYMENT"]]
-        amounts = [["Rs. 55000.00"], ["Rs. 2000.00"], ["Rs. 2000.00"]]
-
-        drawTransactionalRows()
+        drawTransactionalRows(emis)
     }
 
     private void drawReversalsAndRefunds() {
+        if(reversals.size() == 0) {
+            return
+        }
         pdfBoxService.writeText(helvetica_bold, black, 10, x, updateY(-25), 0, 100, "Reversal & Refund")
         updateY(-15)
         pdfBoxService.drawSolidLine(black, x, y, x + w as float, y, th)
         content = [["Date", "Merchant", "Amount"]]
         drawTransactionHeading(content)
-        content = [["30/4/2021", "IMPS PAYMENT"], ["30/4/2021", "CREDIT CARD PAYMENT"], ["30/4/2021", "CREDIT CARD PAYMENT"]]
-        amounts = [["Rs. 55000.00"], ["Rs. 2000.00"], ["Rs. 2000.00"]]
-
-        drawTransactionalRows()
+        drawTransactionalRows(reversals)
     }
 
     private void drawDomesticTxns() {
+        if(domesticTxns.size() == 0) {
+            return
+        }
         pdfBoxService.writeText(helvetica_bold, black, 10, x, updateY(-25), 0, 100, "Domestic Transactions")
         updateY(-15)
         pdfBoxService.drawSolidLine(black, x, y, x + w as float, y, th)
         content = [["Date", "Merchant", "Amount"]]
         drawTransactionHeading(content)
-        content = [["30/4/2021", "IMPS PAYMENT"], ["30/4/2021", "CREDIT CARD PAYMENT"], ["30/4/2021", "CREDIT CARD PAYMENT"]]
-        amounts = [["Rs. 55000.00"], ["Rs. 2000.00"], ["Rs. 2000.00"]]
+        drawTransactionalRows(domesticTxns)
+    }
 
-        drawTransactionalRows()
-
+    private void drawDomesticCashTxns() {
+        if(domesticCashTxns.size() == 0) {
+            return
+        }
         updateY(10)
         content = [["Cash Transactions"]]
         drawTransactionHeading(content)
-
-        content = [["30/4/2021", "IMPS PAYMENT"], ["30/4/2021", "CREDIT CARD PAYMENT"], ["30/4/2021", "CREDIT CARD PAYMENT"]]
-        amounts = [["Rs. 55000.00"], ["Rs. 2000.00"], ["Rs. 2000.00"]]
-        drawTransactionalRows()
+        drawTransactionalRows(domesticCashTxns)
     }
 
     private void drawInternationalTxns() {
+        if(internationalTxns.size() == 0) {
+            return
+        }
         pdfBoxService.writeText(helvetica_bold, black, 10, x, updateY(-25), 0, 100, "International Transactions")
         updateY(-15)
         pdfBoxService.drawSolidLine(black, x, y, x + w as float, y, th)
         content = [["Date", "Merchant", "Amount"]]
         drawTransactionHeading(content)
-        content = [["30/4/2021", "IMPS PAYMENT"], ["30/4/2021", "CREDIT CARD PAYMENT"], ["30/4/2021", "CREDIT CARD PAYMENT"]]
-        amounts = [["Rs. 55000.00"], ["Rs. 2000.00"], ["Rs. 2000.00"]]
+        drawTransactionalRows(internationalTxns)
+    }
 
-        drawTransactionalRows()
+    private void drawInternationCashTxns() {
+        if(internationCashTxns.size() == 0) {
+            return
+        }
 
         updateY(10)
         content = [["Cash Transactions"]]
         drawTransactionHeading(content)
-
-        content = [["30/4/2021", "IMPS PAYMENT"], ["30/4/2021", "CREDIT CARD PAYMENT"], ["30/4/2021", "CREDIT CARD PAYMENT"]]
-        amounts = [["Rs. 55000.00"], ["Rs. 2000.00"], ["Rs. 2000.00"]]
-        drawTransactionalRows()
+        drawTransactionalRows(internationCashTxns)
     }
 
     private void drawTransactionHeading(List<List<String>> content) {

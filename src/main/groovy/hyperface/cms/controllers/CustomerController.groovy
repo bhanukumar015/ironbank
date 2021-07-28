@@ -128,17 +128,16 @@ class CustomerController {
 
     @RequestMapping(value = "/downloadStatement/{statementId}", consumes = MediaType.APPLICATION_FORM_URLENCODED_VALUE, produces = MediaType.APPLICATION_PDF_VALUE)
     ResponseEntity<InputStreamResource> downloadStatement(@PathVariable String statementId) throws IOException {
-        /*Optional<CardStatement> statement = cardStatementRepository.findById(statementId)
+        Optional<CardStatement> statement = cardStatementRepository.findById(statementId)
 
         if(!statement.isPresent()) {
             log.error("Statement record with id: ${statementId} is not found")
             return ResponseEntity.notFound().build()
-        }*/
+        }
 
         ByteArrayInputStream inputStream = null
         try {
-            //PDDocument document = statementService.generateStatement(statement.get())
-            PDDocument document = statementService.generateDummyStatement()
+            PDDocument document = statementService.generateStatement(statement.get())
             ByteArrayOutputStream outputStream = new ByteArrayOutputStream()
 
             document.save(outputStream)

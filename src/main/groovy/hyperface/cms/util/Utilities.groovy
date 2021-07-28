@@ -10,6 +10,7 @@ import org.springframework.web.server.ResponseStatusException
 import java.text.DateFormat
 import java.text.SimpleDateFormat
 import java.time.ZonedDateTime
+import java.time.format.DateTimeFormatter
 
 @Slf4j
 class Utilities {
@@ -37,18 +38,18 @@ class Utilities {
         return Base64.getEncoder().encodeToString(fileByteArray)
     }
 
-    static String convertDateToCustomFormat(Date date, String format) {
-        DateFormat dateFormat = new SimpleDateFormat(format)
-        return dateFormat.format(date)
+    static String convertDateToCustomFormat(ZonedDateTime zonedDateTime, String format) {
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern(format);
+        return zonedDateTime.format(formatter)
     }
 
-    static Date getStatementStartDate(ZonedDateTime dueDate) {
+    static ZonedDateTime getStatementStartDate(ZonedDateTime dueDate) {
         //todo: impl
-        return dueDate as Date
+        return dueDate
     }
 
-    static Date getStatementEndDate(ZonedDateTime dueDate) {
+    static ZonedDateTime getStatementEndDate(ZonedDateTime dueDate) {
         //todo: impl
-        return dueDate as Date
+        return dueDate
     }
 }

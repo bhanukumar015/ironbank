@@ -7,14 +7,23 @@ import org.apache.pdfbox.pdmodel.PDPage
 import org.apache.pdfbox.pdmodel.PDPageContentStream
 import org.apache.pdfbox.pdmodel.common.PDRectangle
 import org.apache.pdfbox.pdmodel.font.PDFont
+import org.apache.pdfbox.pdmodel.font.PDType1Font
 import org.apache.pdfbox.pdmodel.graphics.image.JPEGFactory
 import org.apache.pdfbox.pdmodel.graphics.image.PDImageXObject
+import org.apache.pdfbox.pdmodel.interactive.action.PDActionURI
+import org.apache.pdfbox.pdmodel.interactive.annotation.AnnotationFilter
+import org.apache.pdfbox.pdmodel.interactive.annotation.PDAnnotationLink
+import org.apache.pdfbox.pdmodel.interactive.annotation.PDBorderStyleDictionary
+import org.springframework.stereotype.Service
 
 import java.awt.image.BufferedImage
+import java.util.stream.Collectors
 
+@Service
 class PDFBoxServiceImpl implements PDFBoxService {
 
     private PDDocument document
+    PDPage pdPage
     private PDPageContentStream contentStream
 
     PDFBoxServiceImpl() {
@@ -25,11 +34,10 @@ class PDFBoxServiceImpl implements PDFBoxService {
         return document
     }
 
-    PDPageContentStream addA4Page() {
-        PDPage pdPage = new PDPage(PDRectangle.A4)
+    void addA4Page() {
+        pdPage = new PDPage(PDRectangle.A4)
         document.addPage(pdPage)
         contentStream = new PDPageContentStream(document, pdPage)
-        return contentStream
     }
 
     @Override
@@ -113,7 +121,6 @@ class PDFBoxServiceImpl implements PDFBoxService {
                 if (colAlign[j] == Constants.ALIGN_RIGHT) {
                     sx += colW[j] - 2 * cellPadding - getTextWidth(font, fontSize, content[i][j]) as float
                 }
-                // max require to use fontHeight here for sy??
                 writeText(font, rgb, fontSize, sx + cellPadding as float, sy - (rowH + fontSize)/2 as float, 0, 100, content[i][j]) //todo: estimate by width
 
                 sx += colW[j]

@@ -129,6 +129,7 @@ class Constants {
     /* Date related Constants */
     public static final String MMM_SPACE_DD_COMMA_SPACE_YYYY = "MMM dd, yyyy"
     public static final String DD_SPACE_MMM_SPACE_YYYY = "dd MMM yyyy"
+    public static final String DD_SLASH_MM_SLASH_YYYY = "dd/MM/yyyy"
 
     /** PDFBox related Constants */
     public static final char ALIGN_LEFT = 'L'
