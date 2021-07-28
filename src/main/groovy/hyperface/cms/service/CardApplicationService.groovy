@@ -6,6 +6,8 @@ import hyperface.cms.commands.cardapplication.CardApplicationResponse
 import hyperface.cms.commands.cardapplication.CardEligibilityRequest
 import hyperface.cms.commands.cardapplication.CustomerBankVerificationRequest
 import hyperface.cms.commands.cardapplication.CustomerBankVerificationResponse
+import hyperface.cms.commands.cardapplication.FdBookingRequest
+import hyperface.cms.commands.cardapplication.FdBookingResponse
 import hyperface.cms.commands.cardapplication.FixedDepositFundTransferRequest
 import hyperface.cms.commands.cardapplication.FixedDepositFundTransferResponse
 import hyperface.cms.commands.cardapplication.NomineeInfoAndFatcaRequest
@@ -184,7 +186,7 @@ class CardApplicationService {
                 .tap {
                     fixedDepositAmount = request.getFixedDepositAmount()
                     fdStatus = FixedDepositDetail.FdStatus.PENDING
-                    cardApplication = application.getId()
+                    cardApplication = application
                     fatcaConfirmed = Boolean.FALSE
                     lienStatus = FixedDepositDetail.LienStatus.UNMARKED
                 }
@@ -221,5 +223,34 @@ class CardApplicationService {
                     fixedDepositRefId = fdDetail.getId()
                 }
 
+    }
+
+    FdBookingResponse processFd(FdBookingRequest request, CardApplication cardApplication, FixedDepositDetail fixedDepositDetail) {
+        // collect data for invoking FD booking API on the bank
+        String creditLimit = request.getCreditLimit()
+        String custBankAccountNumber = cardApplication.getCustSavingsBankAccNumber()
+        String custBankIfsCode = cardApplication.getCustSavingsBankIfsCode()
+        String fdAmount = fixedDepositDetail.getFixedDepositAmount()
+        // ...
+        // and rest of Nominee FATCA details from "fixedDepositDetail"
+
+        //TODO: invoke Bank FD booking API
+        String fdAccountNumber = "" // will get this as part of the above API response
+
+        // store FD Account Number
+        fixedDepositDetail
+                .tap {
+                    accountNumber = fdAccountNumber
+                }
+        fixedDepositDetailRepository.save(fixedDepositDetail)
+
+        // return response
+        return new FdBookingResponse()
+                .tap {
+                    status = FdBookingResponse.FdBookingStatus.SUCCESS
+                    applicationRefId = cardApplication.getId()
+                    fixedDepositRefId = fixedDepositDetail.getId()
+                    fixedDepositAccountNumber = fdAccountNumber
+                }
     }
 }

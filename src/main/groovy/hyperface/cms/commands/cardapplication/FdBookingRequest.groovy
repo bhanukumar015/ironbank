@@ -9,7 +9,7 @@ class FdBookingRequest {
     String applicationRefId
 
     @NotBlank(message = "fdRefId must not be null/empty")
-    String fdRefId
+    String fixedDepositRefId
 
     @PositiveValue(message = "creditLimit must be a number, greater than 0")
     Double creditLimit

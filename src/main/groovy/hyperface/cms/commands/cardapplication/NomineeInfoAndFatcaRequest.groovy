@@ -32,10 +32,10 @@ class NomineeInfoAndFatcaRequest {
 
 
     @AssertTrue(message = "nomineeGuardian is required since nominee is a minor")
-    private boolean isOk() {
+    private boolean isGuardianNeeded() {
         int nomineeBirthYear = Integer.parseInt(nomineeDob.substring(0, 4))
 
-        return LocalDate.now().minusYears(nomineeBirthYear) > 18
+        return (LocalDate.now().getYear() - nomineeBirthYear) > 18
                 || StringUtils.isNotBlank(nomineeGuardian)
     }
 }

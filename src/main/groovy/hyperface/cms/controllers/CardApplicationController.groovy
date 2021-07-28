@@ -11,6 +11,8 @@ import hyperface.cms.commands.cardapplication.CardEligibilityResponse
 import hyperface.cms.commands.cardapplication.CardEligibilityResponse.EligibilityStatus
 import hyperface.cms.commands.cardapplication.CustomerBankVerificationRequest
 import hyperface.cms.commands.cardapplication.CustomerBankVerificationResponse
+import hyperface.cms.commands.cardapplication.FdBookingRequest
+import hyperface.cms.commands.cardapplication.FdBookingResponse
 import hyperface.cms.commands.cardapplication.FixedDepositFundTransferRequest
 import hyperface.cms.commands.cardapplication.FixedDepositFundTransferResponse
 import hyperface.cms.commands.cardapplication.NomineeInfoAndFatcaRequest
@@ -177,6 +179,41 @@ class CardApplicationController {
                 .body(response)
     }
 
+    @PostMapping(value = "fixeddeposit", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+    ResponseEntity<FdBookingResponse> processFdBooking(@Valid @RequestBody FdBookingRequest request) {
+        //verify card application ID
+        Optional<CardApplication> cardApplicationOptional = cardApplicationRepository.findById(request.getApplicationRefId())
+        if (!cardApplicationOptional.isPresent()) {
+            String errorMessage = "Application with reference ID: ${request.getApplicationRefId()} not found."
+            return this.buildFdBookingResponse(null, FdBookingResponse.FdBookingStatus.FAILED, HttpStatus.BAD_REQUEST, errorMessage, null, null)
+        }
+
+        //verify FD reference ID
+        Optional<FixedDepositDetail> fixedDepositDetailOptional = fixedDepositDetailRepository.findById(request.getFixedDepositRefId())
+        FixedDepositDetail fdDetail = null
+        if (!fixedDepositDetailOptional.isPresent()
+                || (fdDetail = fixedDepositDetailOptional.get()).getCardApplication().getId() != request.getApplicationRefId()) {
+            String errorMessage = "FixedDepositRefId: ${request.getFixedDepositRefId()} is not associated with ApplictionReferenceID: ${request.getApplicationRefId()}."
+            return this.buildFdBookingResponse(null, FdBookingResponse.FdBookingStatus.FAILED, HttpStatus.BAD_REQUEST, errorMessage, null, null)
+        }
+
+        //verify credit limit based on card program
+        CardApplication cardApplication = cardApplicationOptional.get()
+        CreditCardProgram creditCardProgram = cardProgramRepository.findById(cardApplication.getProgramId()).get()
+        Double fdAmount = fdDetail.getFixedDepositAmount()
+        if (request.getCreditLimit() < (fdAmount * creditCardProgram.getMinCreditLineFdPercentage()) / 100.0
+                || request.getCreditLimit() > (fdAmount * creditCardProgram.getMaxCreditLineFdPercentage()) / 100.0) {
+            String errorMessage = "Credit Limit is not in the defined range."
+            return this.buildFdBookingResponse(null, FdBookingResponse.FdBookingStatus.FAILED, HttpStatus.BAD_REQUEST, errorMessage, null, null)
+        }
+
+        // process FD booking and return response
+        FdBookingResponse response = cardApplicationService.processFd(request, cardApplication, fdDetail)
+        return ResponseEntity
+                .status(response.getStatus() == FdBookingResponse.FdBookingStatus.SUCCESS ? HttpStatus.OK : HttpStatus.FAILED_DEPENDENCY)
+                .body(response)
+    }
+
     private ResponseEntity<CardEligibilityResponse> buildEligibilityResponse(String appRefId, CardEligibilityResponse.EligibilityStatus eligibilityStatus, HttpStatus httpStatus, String errReason) {
         CardEligibilityResponse response = new CardEligibilityResponse()
                 .tap {
@@ -240,6 +277,20 @@ class CardApplicationController {
                     applicationRefId = appRefId
                     errorMessage = errReason
                     fixedDepositRefId = fdRefId
+                }
+        return ResponseEntity
+                .status(httpStatus)
+                .body(response)
+    }
+
+    private ResponseEntity<FdBookingResponse> buildFdBookingResponse(String appRefId, FdBookingResponse.FdBookingStatus fdBookingStatus, HttpStatus httpStatus, String errReason, String fdRefId, String fdAccNum) {
+        FdBookingResponse response = new FdBookingResponse()
+                .tap {
+                    status = fdBookingStatus
+                    applicationRefId = appRefId
+                    errorMessage = errReason
+                    fixedDepositRefId = fdRefId
+                    fixedDepositAccountNumber = fdAccNum
                 }
         return ResponseEntity
                 .status(httpStatus)

@@ -1,9 +1,7 @@
 package hyperface.cms.commands.cardapplication
 
 import hyperface.cms.Constants
-import hyperface.cms.domains.cardapplication.KycProof
 import hyperface.cms.util.validation.StringEnumeration
-import org.springframework.format.annotation.DateTimeFormat
 
 import javax.validation.constraints.Email
 import javax.validation.constraints.NotBlank

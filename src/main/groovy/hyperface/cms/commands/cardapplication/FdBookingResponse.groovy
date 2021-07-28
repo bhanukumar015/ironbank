@@ -1,5 +1,8 @@
 package hyperface.cms.commands.cardapplication
 
+import com.fasterxml.jackson.annotation.JsonInclude
+
+@JsonInclude(JsonInclude.Include.NON_NULL)
 class FdBookingResponse {
     enum FdBookingStatus {
         SUCCESS,
@@ -8,7 +11,7 @@ class FdBookingResponse {
 
     FdBookingStatus status
     String errorMessage
-    String fdAccountNumber
+    String fixedDepositAccountNumber
     String applicationRefId
-    String fdRefId
+    String fixedDepositRefId
 }
