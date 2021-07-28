@@ -8,7 +8,9 @@ import javax.persistence.Enumerated
 import javax.persistence.GeneratedValue
 import javax.persistence.Id
 import javax.persistence.JoinColumn
+import javax.persistence.ManyToOne
 import javax.persistence.OneToOne
+import java.time.ZonedDateTime
 
 @Entity
 class FixedDepositDetail {
@@ -23,17 +25,18 @@ class FixedDepositDetail {
     @GeneratedValue(generator = "fd_detail_id")
     String id
 
-    @OneToOne(optional = false)
+    @ManyToOne(optional = false)
     @JoinColumn(name = "card_application_id", referencedColumnName = "id")
     CardApplication cardApplication
 
     String accountNumber
     Double amount
+    ZonedDateTime maturityDate
     String nomineeName
     String nomineeDob
     String nomineeGuardian
     String motherMaidenName
-    String fatcaConfirmationId
+    Boolean fatcaConfirmed
 
     @Enumerated(EnumType.STRING)
     LienStatus lienStatus

@@ -11,6 +11,7 @@ import javax.persistence.Enumerated
 import javax.persistence.GeneratedValue
 import javax.persistence.Id
 import javax.persistence.JoinColumn
+import javax.persistence.OneToMany
 import javax.persistence.OneToOne
 import java.time.ZonedDateTime
 
@@ -49,8 +50,8 @@ class CardApplication {
     String custSavingsBankAccNumber
     String custSavingsBankIfsCode
 
-    @OneToOne(mappedBy = "cardApplication")
-    FixedDepositDetail fdDetail
+    @OneToMany(mappedBy = "cardApplication", cascade = CascadeType.ALL)
+    List<FixedDepositDetail> fdDetails
 
     @CreationTimestamp
     ZonedDateTime capturedOn

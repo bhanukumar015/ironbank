@@ -21,5 +21,4 @@ class RewardsRequest {
 enum Operation {
     DEBIT,
     CREDIT
-
 }
