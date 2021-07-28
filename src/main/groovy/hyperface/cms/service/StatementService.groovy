@@ -8,8 +8,6 @@ import com.google.zxing.client.j2se.MatrixToImageWriter
 import com.google.zxing.common.BitMatrix
 import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel
 import hyperface.cms.Constants
-import hyperface.cms.domains.Address
-import hyperface.cms.domains.Bank
 import hyperface.cms.domains.Card
 import hyperface.cms.domains.CardStatement
 import hyperface.cms.domains.Client
@@ -17,7 +15,7 @@ import hyperface.cms.domains.CreditAccount
 import hyperface.cms.domains.CreditCardProgram
 import hyperface.cms.domains.Customer
 import hyperface.cms.domains.CustomerTransaction
-import hyperface.cms.domains.PDFBox
+
 import hyperface.cms.domains.ledger.TransactionLedger
 import hyperface.cms.model.enums.LedgerTransactionType
 import hyperface.cms.repository.CardProgramRepository
@@ -25,24 +23,15 @@ import hyperface.cms.repository.CardRepository
 import hyperface.cms.repository.CreditAccountRepository
 import hyperface.cms.repository.CustomerTransactionRepository
 import hyperface.cms.repository.TransactionLedgerRepository
-import hyperface.cms.service.pdfbox.PDFBoxService
 import hyperface.cms.service.pdfbox.PDFBoxServiceImpl
 import hyperface.cms.util.Utilities
 import org.apache.pdfbox.pdmodel.PDDocument
 import org.apache.pdfbox.pdmodel.PDPage
-import org.apache.pdfbox.pdmodel.PDPageContentStream
 import org.apache.pdfbox.pdmodel.common.PDRectangle
 import org.apache.pdfbox.pdmodel.font.PDFont
 import org.apache.pdfbox.pdmodel.font.PDType1Font
-import org.apache.pdfbox.pdmodel.font.encoding.Encoding
-import org.apache.pdfbox.pdmodel.graphics.color.PDColor
-import org.apache.pdfbox.pdmodel.graphics.color.PDColorSpace
-import org.apache.pdfbox.pdmodel.graphics.color.PDDeviceRGB
 import org.apache.pdfbox.pdmodel.graphics.image.JPEGFactory
 import org.apache.pdfbox.pdmodel.graphics.image.PDImageXObject
-import org.apache.pdfbox.pdmodel.interactive.action.PDActionURI
-import org.apache.pdfbox.pdmodel.interactive.annotation.PDAnnotationLink
-import org.apache.pdfbox.pdmodel.interactive.annotation.PDBorderStyleDictionary
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Service
 import org.springframework.util.ResourceUtils
