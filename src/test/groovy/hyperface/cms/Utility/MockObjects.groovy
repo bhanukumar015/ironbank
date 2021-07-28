@@ -7,6 +7,7 @@ import hyperface.cms.commands.CreateCardRequest
 import hyperface.cms.commands.CustomerTransactionRequest
 import hyperface.cms.domains.Address
 import hyperface.cms.domains.Card
+import hyperface.cms.domains.CardControl
 import hyperface.cms.domains.CreditAccount
 import hyperface.cms.domains.CreditCardProgram
 import hyperface.cms.domains.Customer
@@ -50,6 +51,7 @@ class MockObjects {
 
     public CreateCardRequest getTestCreateCardRequest(){
         CreateCardRequest cardRequest = new CreateCardRequest()
+        cardRequest.isAddOn = false
         cardRequest.cardProgramId = '1'
         cardRequest.customerId = '1'
         cardRequest.creditAccountId = UUID.randomUUID().toString()
@@ -98,18 +100,32 @@ class MockObjects {
             lastFourDigits = UUID.randomUUID().toString()
             physicallyIssued = true
             virtuallyIssued = false
-            virtualCardActivatedByCustomer = false
-            physicalCardActivatedByCustomer = false
-            cardSuspendedByCustomer = false
-            enableOverseasTransactions = false
-            enableOfflineTransactions = false
-            enableNFC = false
-            enableOnlineTransactions = false
-            enableCashWithdrawal = false
-            enableMagStripe = false
-            perTransactionLimit = new TransactionLimit()
-            monthlyTransactionLimit = new TransactionLimit()
-            dailyTransactionLimit = new TransactionLimit()
+            virtualCardActivated = false
+            physicalCardActivated = false
+            cardType = Constants.CardType.Physical
+            isPrimaryCard = true
+            CardControl mockCardControl = new CardControl().tap{
+                cardSuspendedByCustomer = false
+                enableOverseasTransactions = false
+                enableOfflineTransactions = false
+                enableNFC = false
+                enableOnlineTransactions = false
+                enableCashWithdrawal = false
+                enableMagStripe = false
+                dailyTransactionLimit = new TransactionLimit().tap{
+                    value = 100
+                }
+                dailyCashWithdrawalLimit = new TransactionLimit().tap{
+                    value = 10
+                }
+                perTransactionLimit = new TransactionLimit().tap{
+                    value = 10
+                }
+                monthlyTransactionLimit = new TransactionLimit().tap{
+                    value = 1000
+                }
+            }
+            cardControl = mockCardControl
             creditAccount = this.getTestCreditAccount()
         }
         return card

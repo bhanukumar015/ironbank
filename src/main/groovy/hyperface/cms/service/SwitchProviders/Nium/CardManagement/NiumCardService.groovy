@@ -9,7 +9,6 @@ import hyperface.cms.commands.SetCardPinRequest
 import hyperface.cms.domains.Card
 import hyperface.cms.domains.CreditCardProgram
 import hyperface.cms.domains.Customer
-import hyperface.cms.repository.CustomerRepository
 import hyperface.cms.service.SwitchProviders.Nium.NiumSwitchProvider
 import hyperface.cms.service.SwitchProviders.Nium.Utility.NiumObjectsCreation
 import org.apache.commons.codec.binary.Base64
@@ -19,9 +18,6 @@ import org.springframework.stereotype.Service
 
 @Service
 class NiumCardService {
-
-    @Autowired
-    CustomerRepository customerRepository
 
     @Autowired
     NiumSwitchProvider niumSwitchProvider
@@ -40,12 +36,10 @@ class NiumCardService {
     public static final String cardSetPinEndpoint = "customer/%s/wallet/%s/card/%s/pin"
     public static final String activateCardEndpoint = "customer/%s/wallet/%s/card/%s/activate"
 
-    public Map<String, Object> createCard(CreateCardRequest createCardRequest, CreditCardProgram creditCardProgram){
-        Customer customer = customerRepository.findById(createCardRequest.customerId)
-                .orElseThrow(() -> new IllegalArgumentException("No customer found with customer" +
-                        " id ${createCardRequest.customerId}"))
-        String customerHashId = customer.switchMetadata.get('nium.customerHashId')
-        String walletId = customer.switchMetadata.get('nium.walletId')
+    Map<String, Object> createCard(CreateCardRequest createCardRequest, CreditCardProgram creditCardProgram
+                , Map<String,Object> customerSwitchMetadata){
+        String customerHashId = customerSwitchMetadata.get('nium.customerHashId')
+        String walletId = customerSwitchMetadata.get('nium.walletId')
         String endpoint = String.format(createCardEndpoint, customerHashId, walletId)
         String requestBody = niumObjectsCreation.createNiumRequestCard(createCardRequest, creditCardProgram)
         String response = niumSwitchProvider.executeHttpPostRequestSync(endpoint, requestBody, MAX_RETRIES)
@@ -56,12 +50,10 @@ class NiumCardService {
         return niumCardMetadata
     }
 
-    public HttpStatus createCardAsync(CreateCardRequest createCardRequest, CreditCardProgram creditCardProgram){
-        Customer customer = customerRepository.findById(createCardRequest.customerId)
-                .orElseThrow(() -> new IllegalArgumentException("No customer found with customer" +
-                        " id ${createCardRequest.customerId}"))
-        String customerHashId = customer.switchMetadata.get('nium.customerHashId')
-        String walletId = customer.switchMetadata.get('nium.walletId')
+    HttpStatus createCardAsync(CreateCardRequest createCardRequest, CreditCardProgram creditCardProgram
+            , Map<String, Object> customerSwitchMetadata){
+        String customerHashId = customerSwitchMetadata.get('nium.customerHashId')
+        String walletId = customerSwitchMetadata.get('nium.walletId')
         String endpoint = String.format(createCardEndpoint, customerHashId, walletId)
         String requestBody = niumObjectsCreation.createNiumRequestCard(createCardRequest, creditCardProgram)
         createCardCallback.retries = MAX_RETRIES
@@ -73,7 +65,7 @@ class NiumCardService {
         return HttpStatus.OK
     }
 
-    public boolean invokeCardAction(CardBlockActionRequest cardBlockActionRequest
+    Boolean invokeCardAction(CardBlockActionRequest cardBlockActionRequest
                             , Map<String,Object> customerSwitchMetadata, String switchCardId){
         String customerHashId = customerSwitchMetadata.get('nium.customerHashId')
         String walletId = customerSwitchMetadata.get('nium.walletId')
@@ -84,7 +76,7 @@ class NiumCardService {
         return (metadata.get(Constants.NiumSuccessResponseKey) == Constants.NiumSuccessResponseValue)
     }
 
-    public boolean setCardPin(SetCardPinRequest setCardPinRequest, Map<String,Object> customerSwitchMetadata
+    Boolean setCardPin(SetCardPinRequest setCardPinRequest, Map<String,Object> customerSwitchMetadata
                               , String switchCardId){
         String customerHashId = customerSwitchMetadata.get('nium.customerHashId')
         String walletId = customerSwitchMetadata.get('nium.walletId')
@@ -98,7 +90,7 @@ class NiumCardService {
         return (metadata.get(Constants.NiumSuccessResponseKey) == Constants.NiumSuccessResponseValue)
     }
 
-    public boolean activateCard(Card card){
+    Boolean activateCard(Card card){
         Customer customer = card?.creditAccount?.customer
         if(customer == null) {
             throw new IllegalArgumentException("No customer assigned to card with id ${card.id}")
