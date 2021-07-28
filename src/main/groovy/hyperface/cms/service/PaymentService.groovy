@@ -68,7 +68,7 @@ class PaymentService {
     @Autowired
     private TransactionLedgerRepository transactionLedgerRepository
 
-    static Either<TxnNotEligible, Boolean> checkEligibility(CustomerTransactionRequest req) {
+    Either<TxnNotEligible, Boolean> checkEligibility(CustomerTransactionRequest req) {
         if(req.card.hotlisted) {
             return Either.left(new TxnNotEligible(reason: "Card is blocked"))
         }
@@ -150,7 +150,7 @@ class PaymentService {
         return Either.right(txn)
     }
 
-    static CustomerTransactionResponse getCustomerTransactionResponse(CustomerTransaction txn) {
+    CustomerTransactionResponse getCustomerTransactionResponse(CustomerTransaction txn) {
         CustomerTransactionResponse txnResponse = new CustomerTransactionResponse()
         txnResponse.id = txn.id
         txnResponse.cardId = txn.card.id
@@ -242,7 +242,7 @@ class PaymentService {
         return Either.right(txn)
     }
 
-    static Integer getInterestRateForTxn(LedgerEntry ledgerEntry) {
+    Integer getInterestRateForTxn(LedgerEntry ledgerEntry) {
         CreditCardProgram program = ledgerEntry.customerTxn.card.cardProgram
         InterestCriteria matchedCriteria = program.scheduleOfCharges.interestCriteriaList?.find({
             return it.checkForMatch(ledgerEntry)
@@ -322,7 +322,7 @@ class PaymentService {
         return creditEntry
     }
 
-    private static LedgerTransactionType getLedgerTransactionType(TransactionType txnType) {
+    private LedgerTransactionType getLedgerTransactionType(TransactionType txnType) {
         if (txnType.SETTLEMENT_DEBIT) {
             return LedgerTransactionType.PURCHASE
         } else if (txnType.SETTLEMENT_CREDIT) {
