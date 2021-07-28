@@ -1,5 +1,6 @@
 package hyperface.cms.domains.ledger
 
+import hyperface.cms.domains.CreditAccount
 import hyperface.cms.domains.Transaction
 import hyperface.cms.model.enums.FeeType
 import hyperface.cms.model.enums.LedgerTransactionType
@@ -44,6 +45,9 @@ class TransactionLedger {
     @ManyToOne
     @JoinColumn(name = "txn_ref_id", referencedColumnName = "id")
     Transaction transaction
+
+    @ManyToOne
+    CreditAccount creditAccount
 
     String txnDescription
 }
