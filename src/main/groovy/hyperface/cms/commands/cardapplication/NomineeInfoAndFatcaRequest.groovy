@@ -13,7 +13,7 @@ class NomineeInfoAndFatcaRequest {
     String applicationRefId
 
     @NotBlank(message = "fdRefId must not be null/empty")
-    String fdRefId
+    String fixedDepositRefId
 
     @NotBlank(message = "nomineeName must not be null/empty")
     String nomineeName

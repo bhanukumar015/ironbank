@@ -9,11 +9,15 @@ import javax.persistence.GeneratedValue
 import javax.persistence.Id
 import javax.persistence.JoinColumn
 import javax.persistence.ManyToOne
-import javax.persistence.OneToOne
 import java.time.ZonedDateTime
 
 @Entity
 class FixedDepositDetail {
+    enum FdStatus {
+        PENDING,
+        COMPLETE
+    }
+
     enum LienStatus {
         LOCKED,
         UNMARKED,
@@ -30,13 +34,16 @@ class FixedDepositDetail {
     CardApplication cardApplication
 
     String accountNumber
-    Double amount
+    Double fixedDepositAmount
     ZonedDateTime maturityDate
     String nomineeName
     String nomineeDob
     String nomineeGuardian
     String motherMaidenName
     Boolean fatcaConfirmed
+
+    @Enumerated(EnumType.STRING)
+    FdStatus fdStatus
 
     @Enumerated(EnumType.STRING)
     LienStatus lienStatus

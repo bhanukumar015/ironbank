@@ -50,7 +50,7 @@ class CardApplication {
     String custSavingsBankAccNumber
     String custSavingsBankIfsCode
 
-    @OneToMany(mappedBy = "cardApplication", cascade = CascadeType.ALL)
+    @OneToMany(mappedBy = "cardApplication", cascade = CascadeType.REMOVE)
     List<FixedDepositDetail> fdDetails
 
     @CreationTimestamp

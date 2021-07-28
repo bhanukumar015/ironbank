@@ -14,5 +14,5 @@ class FixedDepositFundTransferResponse {
     String applicationRefId
     String transactionRefId
     Double amountTransferred
-    String fdRefId
+    String fixedDepositRefId
 }

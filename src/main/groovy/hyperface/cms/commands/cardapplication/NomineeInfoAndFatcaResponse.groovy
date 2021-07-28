@@ -9,5 +9,5 @@ class NomineeInfoAndFatcaResponse {
     FatcaStatus status
     String errorMessage
     String applicationRefId
-    String fdRefId
+    String fixedDepositRefId
 }

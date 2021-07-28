@@ -8,13 +8,22 @@ import hyperface.cms.commands.cardapplication.CardApplicationRequest
 import hyperface.cms.commands.cardapplication.CardApplicationResponse
 import hyperface.cms.commands.cardapplication.CardEligibilityRequest
 import hyperface.cms.commands.cardapplication.CardEligibilityResponse
+import hyperface.cms.commands.cardapplication.CardEligibilityResponse.EligibilityStatus
+import hyperface.cms.commands.cardapplication.CustomerBankVerificationRequest
+import hyperface.cms.commands.cardapplication.CustomerBankVerificationResponse
+import hyperface.cms.commands.cardapplication.FixedDepositFundTransferRequest
+import hyperface.cms.commands.cardapplication.FixedDepositFundTransferResponse
+import hyperface.cms.commands.cardapplication.NomineeInfoAndFatcaRequest
+import hyperface.cms.commands.cardapplication.NomineeInfoAndFatcaResponse
 import hyperface.cms.domains.Address
 import hyperface.cms.domains.CreditCardProgram
 import hyperface.cms.domains.cardapplication.CardApplication
 import hyperface.cms.domains.cardapplication.DemographicDetail
+import hyperface.cms.domains.cardapplication.FixedDepositDetail
 import hyperface.cms.domains.kyc.KycOption.KycType
 import hyperface.cms.repository.CardProgramRepository
 import hyperface.cms.repository.cardapplication.CardApplicationRepository
+import hyperface.cms.repository.cardapplication.FixedDepositDetailRepository
 import hyperface.cms.service.CardApplicationService
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
@@ -24,8 +33,6 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
-
-import hyperface.cms.commands.cardapplication.CardEligibilityResponse.EligibilityStatus
 
 import javax.validation.Valid
 
@@ -42,6 +49,9 @@ class CardApplicationController {
 
     @Autowired
     private CardApplicationService cardApplicationService
+
+    @Autowired
+    private FixedDepositDetailRepository fixedDepositDetailRepository
 
     @PostMapping(value = "eligibility", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
     ResponseEntity<CardEligibilityResponse> processEligibility(@Valid @RequestBody CardEligibilityRequest request) {
@@ -64,7 +74,7 @@ class CardApplicationController {
         }
         CardApplication existingCardApplication = cardApplicationRepository.findApplicationByMobileClientAndProgram(request.getClientId(),
                 request.getProgramId(), request.getMobileNumber())
-        if(existingCardApplication != null) {
+        if (existingCardApplication != null) {
             log.info("Idempotent request received for Eligibility API. CardApplicationId: {}", existingCardApplication.getId())
             return this.buildEligibilityResponse(existingCardApplication.getId(), EligibilityStatus.APPROVED, HttpStatus.OK, null)
         }
@@ -104,6 +114,69 @@ class CardApplicationController {
 
     }
 
+    @PostMapping(value = "bankverification", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+    ResponseEntity<CustomerBankVerificationResponse> verifyBank(@Valid @RequestBody CustomerBankVerificationRequest request) {
+        //verify card application ID
+        Optional<CardApplication> cardApplicationOptional = cardApplicationRepository.findById(request.getApplicationRefId())
+        if (!cardApplicationOptional.isPresent()) {
+            String errorMessage = "Application with reference ID: ${request.getApplicationRefId()} not found."
+            return this.buildBankVerificationResponse(null, CustomerBankVerificationResponse.VerificationStatus.FAILED, HttpStatus.BAD_REQUEST, errorMessage, null, null)
+        }
+
+        // process verification request and return response
+        CustomerBankVerificationResponse response = cardApplicationService.verifyBank(request, cardApplicationOptional.get())
+        return ResponseEntity
+                .status(response.getStatus() == CustomerBankVerificationResponse.VerificationStatus.SUCCESS ? HttpStatus.OK : HttpStatus.FAILED_DEPENDENCY)
+                .body(response)
+    }
+
+    @PostMapping(value = "fundtransfer", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+    ResponseEntity<FixedDepositFundTransferResponse> transferFund(@Valid @RequestBody FixedDepositFundTransferRequest request) {
+        //verify card application ID
+        Optional<CardApplication> cardApplicationOptional = cardApplicationRepository.findById(request.getApplicationRefId())
+        if (!cardApplicationOptional.isPresent()) {
+            String errorMessage = "Application with reference ID: ${request.getApplicationRefId()} not found."
+            return this.buildFundTransferResponse(null, FixedDepositFundTransferResponse.TransferStatus.FAILED, HttpStatus.BAD_REQUEST, errorMessage, null, null, null)
+        }
+
+        // process fund transfer and return response
+        FixedDepositFundTransferResponse response = cardApplicationService.processFundTransfer(request, cardApplicationOptional.get())
+        return ResponseEntity
+                .status(response.getStatus() == FixedDepositFundTransferResponse.TransferStatus.SUCCESS ? HttpStatus.OK : HttpStatus.FAILED_DEPENDENCY)
+                .body(response)
+    }
+
+    @PostMapping(value = "declaration", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+    ResponseEntity<NomineeInfoAndFatcaResponse> processDeclaration(@Valid @RequestBody NomineeInfoAndFatcaRequest request) {
+        //verify card application ID
+        Optional<CardApplication> cardApplicationOptional = cardApplicationRepository.findById(request.getApplicationRefId())
+        if (!cardApplicationOptional.isPresent()) {
+            String errorMessage = "Application with reference ID: ${request.getApplicationRefId()} not found."
+            return this.buildNomineeAndFatcaResponse(null, FixedDepositFundTransferResponse.TransferStatus.FAILED, HttpStatus.BAD_REQUEST, errorMessage, null)
+        }
+
+        //verify FD reference ID
+        Optional<FixedDepositDetail> fixedDepositDetailOptional = fixedDepositDetailRepository.findById(request.getFixedDepositRefId())
+        FixedDepositDetail fdDetail = null
+        if (!fixedDepositDetailOptional.isPresent()
+                || (fdDetail = fixedDepositDetailOptional.get()).getCardApplication().getId() != request.getApplicationRefId()) {
+            String errorMessage = "FixedDepositRefId: ${request.getFixedDepositRefId()} is not associated with ApplictionReferenceID: ${request.getApplicationRefId()}."
+            return this.buildNomineeAndFatcaResponse(null, NomineeInfoAndFatcaResponse.FatcaStatus.FAILED, HttpStatus.BAD_REQUEST, errorMessage, null)
+        }
+
+        // check for FATCA confirmation
+        if (!request.getFatcaConfirmed()) {
+            String errorMessage = "Customer did not mandate the declaration for ApplictionReferenceID: ${request.getApplicationRefId()}."
+            return this.buildNomineeAndFatcaResponse(null, NomineeInfoAndFatcaResponse.FatcaStatus.FAILED, HttpStatus.BAD_REQUEST, errorMessage, null)
+        }
+
+        // process nominee and fatca declaration and return response
+        NomineeInfoAndFatcaResponse response = cardApplicationService.processNomineeAndFatca(request, cardApplicationOptional.get(), fdDetail)
+        return ResponseEntity
+                .status(response.getStatus() == NomineeInfoAndFatcaResponse.FatcaStatus.SUCCESS ? HttpStatus.OK : HttpStatus.FAILED_DEPENDENCY)
+                .body(response)
+    }
+
     private ResponseEntity<CardEligibilityResponse> buildEligibilityResponse(String appRefId, CardEligibilityResponse.EligibilityStatus eligibilityStatus, HttpStatus httpStatus, String errReason) {
         CardEligibilityResponse response = new CardEligibilityResponse()
                 .tap {
@@ -125,6 +198,48 @@ class CardApplicationController {
                     hyperfaceCustomerId = hfCustId
                     kycMethod = kycType
                     bankCustomerId = bankCustId
+                }
+        return ResponseEntity
+                .status(httpStatus)
+                .body(response)
+    }
+
+    private ResponseEntity<CustomerBankVerificationResponse> buildBankVerificationResponse(String appRefId, CustomerBankVerificationResponse.VerificationStatus verificationStatus, HttpStatus httpStatus, String errReason, Double minCreditLineFdPer, Double maxCreditLineFdPer) {
+        CustomerBankVerificationResponse response = new CustomerBankVerificationResponse()
+                .tap {
+                    status = verificationStatus
+                    applicationRefId = appRefId
+                    errorMessage = errReason
+                    minCreditLineFdPercentage = minCreditLineFdPer
+                    maxCreditLineFdPercentage = maxCreditLineFdPer
+                }
+        return ResponseEntity
+                .status(httpStatus)
+                .body(response)
+    }
+
+    private ResponseEntity<FixedDepositFundTransferResponse> buildFundTransferResponse(String appRefId, FixedDepositFundTransferResponse.TransferStatus transferStatus, HttpStatus httpStatus, String errReason, String txnRefId, Double amount, String fdRefId) {
+        FixedDepositFundTransferResponse response = new FixedDepositFundTransferResponse()
+                .tap {
+                    status = transferStatus
+                    applicationRefId = appRefId
+                    errorMessage = errReason
+                    transactionRefId
+                    amountTransferred
+                    fixedDepositRefId
+                }
+        return ResponseEntity
+                .status(httpStatus)
+                .body(response)
+    }
+
+    private ResponseEntity<NomineeInfoAndFatcaResponse> buildNomineeAndFatcaResponse(String appRefId, NomineeInfoAndFatcaResponse.FatcaStatus fatcaStatus, HttpStatus httpStatus, String errReason, String fdRefId) {
+        NomineeInfoAndFatcaResponse response = new NomineeInfoAndFatcaResponse()
+                .tap {
+                    status = fatcaStatus
+                    applicationRefId = appRefId
+                    errorMessage = errReason
+                    fixedDepositRefId = fdRefId
                 }
         return ResponseEntity
                 .status(httpStatus)
