@@ -135,7 +135,7 @@ class StatementService {
     String[] cash_list = ['Settle Debit Cash', 'Settle Credit Cash', 'Cash Withdrawal']
 
     Customer customer = new Customer()
-    CardStatement statement
+    CardStatement statement = new CardStatement()
     CreditAccount creditAccount = new CreditAccount()
     Client client = new Client()
     Card card = new Card()
@@ -156,16 +156,18 @@ class StatementService {
     ZonedDateTime from
     ZonedDateTime to
 
+
+
     PDDocument generateStatement(CardStatement cardStatement) {
         from = Utilities.getStatementStartDate(statement.getDueDate())
         to = Utilities.getStatementEndDate(statement.getDueDate())
 
-        statement = cardStatement
+        /*statement = cardStatement
         creditAccount = creditAccountRepository.findById(statement.getId())
         customer = creditAccountRepository.findByCustomerId(creditAccount.getCustomer().getId())
         card = cardRepository.findByCreditAccount(creditAccount) //todo: include isPrimary constraint later
         cardProgram = card.getCardProgram()
-        client = cardProgram.getClient()
+        client = cardProgram.getClient()*/
         //ledgerList = transactionLedgerRepository.findAllByCreditAccountInRange(creditAccount, from, to) todo: Impl
 
         for(TransactionLedger ledgerTxn: ledgerList) {
