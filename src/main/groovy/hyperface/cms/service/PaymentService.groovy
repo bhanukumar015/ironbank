@@ -103,7 +103,7 @@ class PaymentService {
             txn.billingAmount = req.transactionAmount * currencyConversion.conversionRate
             txn.billingCurrency = account.defaultCurrency
         }
-        Double creditBuffer = req.card.cardProgram.overLimitAuthPct * account.approvedCreditLimit
+        Double creditBuffer = (req.card.cardProgram.overLimitAuthPct * account.approvedCreditLimit) / 100
         if (txn.billingAmount > account.availableCreditLimit + creditBuffer) {
             return Either.left(new GenericErrorResponse(reason:  "Insufficient balance"))
         }
