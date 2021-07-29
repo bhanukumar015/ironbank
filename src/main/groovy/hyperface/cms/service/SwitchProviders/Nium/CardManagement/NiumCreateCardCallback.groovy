@@ -2,11 +2,14 @@ package hyperface.cms.service.SwitchProviders.Nium.CardManagement
 
 import com.fasterxml.jackson.core.type.TypeReference
 import com.fasterxml.jackson.databind.ObjectMapper
+import hyperface.cms.Constants
 import hyperface.cms.commands.CreateCardRequest
 import hyperface.cms.domains.Card
+import hyperface.cms.domains.CardControl
 import hyperface.cms.domains.CreditAccount
 import hyperface.cms.domains.CreditCardProgram
 import hyperface.cms.domains.TransactionLimit
+import hyperface.cms.repository.CardControlRepository
 import hyperface.cms.repository.CardRepository
 import hyperface.cms.repository.CreditAccountRepository
 import hyperface.cms.service.SwitchProviders.Nium.NiumSwitchProvider
@@ -35,6 +38,9 @@ class NiumCreateCardCallback implements Callback<JsonNode>{
     @Autowired
     NiumObjectsCreation niumObjectsCreation
 
+    @Autowired
+    CardControlRepository cardControlRepository
+
     CreateCardRequest cardRequest
     CreditCardProgram cardProgram
     String endpoint
@@ -58,28 +64,37 @@ class NiumCreateCardCallback implements Callback<JsonNode>{
             card.creditAccount = creditAccount
             card.cardProgram = cardProgram
             card.cardBin = cardProgram.cardBin
+            card.cardType == cardRequest.cardType
             card.cardExpiryMonth = 10
             card.cardExpiryYear = 2030
             card.switchCardId = switchCardMetadata.get('cardHashId').toString()
             card.lastFourDigits = switchCardMetadata.get('maskedCardNumber').toString()[-4..-1]
             card.physicallyIssued = false
             card.virtuallyIssued = true
-            card.virtualCardActivatedByCustomer = false
-            card.physicalCardActivatedByCustomer = false
-            card.cardSuspendedByCustomer = false
-            card.enableOverseasTransactions = false
-            card.enableOfflineTransactions = false
-            card.enableNFC = false
-            card.enableOnlineTransactions = false
-            card.enableCashWithdrawal = false
-
-            card.dailyTransactionLimit = new TransactionLimit().tap {
-                value = cardProgram.defaultDailyTransactionLimit
+            card.virtualCardActivated = (card.cardType != Constants.CardType.Physical)
+                    ? cardProgram.virtualCardActivation == CreditCardProgram.CardActivation.AUTO
+                    : false
+            card.physicalCardActivated = false
+            CardControl cardControl = new CardControl().tap{
+                cardSuspendedByCustomer = false
+                enableOverseasTransactions = false
+                enableOfflineTransactions = false
+                enableNFC = false
+                enableOnlineTransactions = !(card.cardType == Constants.CardType.Phygital)
+                enableCashWithdrawal = false
+                enableMagStripe = false
+                dailyTransactionLimit = new TransactionLimit().tap{
+                    value = cardProgram.defaultDailyTransactionLimit
+                }
+                dailyCashWithdrawalLimit = new TransactionLimit().tap{
+                    value = cardProgram.defaultDailyCashWithdrawalLimit
+                }
+                perTransactionLimit = new TransactionLimit()
+                monthlyTransactionLimit = new TransactionLimit()
+                lifetimeTransactionLimit = new TransactionLimit()
             }
-            card.dailyCashWithdrawalLimit = new TransactionLimit().tap{
-                value = cardProgram.defaultDailyCashWithdrawalLimit
-            }
-
+            cardControlRepository.save(cardControl)
+            card.cardControl = cardControl
             cardRepository.save(card)
         }
         else if(retries > 0){

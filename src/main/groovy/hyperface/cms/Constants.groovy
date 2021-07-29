@@ -22,7 +22,7 @@ class Constants {
     }
 
     enum CardType {
-        Physical, Virtual, VirtualUpgradeToPhysical
+        Physical, Virtual, VirtualUpgradeToPhysical, Phygital
     }
 
     enum LedgerEntryType {

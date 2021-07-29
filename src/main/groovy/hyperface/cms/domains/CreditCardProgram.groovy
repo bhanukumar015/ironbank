@@ -26,6 +26,8 @@ class CreditCardProgram extends HyperfaceProgram {
         MANUAL
     }
 
+    enum CardActivation {AUTO, FIRST_TRANSACTION, MANUAL}
+
     @Id
     @GenericGenerator(name = "card_program_id", strategy = "hyperface.cms.util.UniqueIdGenerator")
     @GeneratedValue(generator = "card_program_id")
@@ -49,10 +51,17 @@ class CreditCardProgram extends HyperfaceProgram {
     String cardLogoId
     String cardPlasticId
 
+    Boolean magStripePresent
+    Boolean nfcTagPresent
 
     String startingCardNumber
     String endingCardNumber
     String lastUsedCardNumber
+
+    @Enumerated(value = EnumType.STRING)
+    CardActivation virtualCardActivation
+    @Enumerated(value = EnumType.STRING)
+    CardActivation physicalCardActivation
 
     Boolean domesticUsage
     Boolean internationalUsage
