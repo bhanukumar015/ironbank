@@ -6,7 +6,7 @@ import hyperface.cms.commands.CardTransaction
 import hyperface.cms.commands.CreateCardRequest
 import hyperface.cms.commands.CreateCreditAccountRequest
 import hyperface.cms.commands.FetchCardTransactionsRequest
-
+import hyperface.cms.commands.GenericErrorResponse
 import hyperface.cms.domains.Card
 import hyperface.cms.domains.CardStatement
 import hyperface.cms.domains.CreditAccount
@@ -21,10 +21,13 @@ import hyperface.cms.repository.LedgerEntryRepository
 import hyperface.cms.service.AccountService
 
 import hyperface.cms.service.StatementService
+import hyperface.cms.util.Response
+import io.vavr.control.Either
 import org.apache.pdfbox.pdmodel.PDDocument
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.core.io.InputStreamResource
 import org.springframework.http.HttpHeaders
+import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.GetMapping
@@ -67,7 +70,7 @@ class CustomerController {
 
     // this will be allowed only by
     @RequestMapping(value = "/createCreditAccount", method = RequestMethod.POST,
-          consumes = MediaType.APPLICATION_FORM_URLENCODED_VALUE)
+            consumes = MediaType.APPLICATION_FORM_URLENCODED_VALUE)
     CreditAccount createCreditAccount(CreateCreditAccountRequest req) {
         println req.dump()
         String customerId = req.customerId
@@ -130,22 +133,29 @@ class CustomerController {
     ResponseEntity<InputStreamResource> downloadStatement(@PathVariable String statementId) throws IOException {
         Optional<CardStatement> statement = cardStatementRepository.findById(statementId)
 
-        if(!statement.isPresent()) {
+        if (!statement.isPresent()) {
             log.error("Statement record with id: ${statementId} is not found")
             return ResponseEntity.notFound().build()
         }
 
         ByteArrayInputStream inputStream = null
         try {
-            PDDocument document = statementService.generateStatement(statement.get())
+            Either<GenericErrorResponse, PDDocument> statementResult = statementService.generateStatement(statement.get())
+            if (statementResult.isLeft()) {
+                String reason = statementResult.left().get().reason
+                log.error("Failed to generate downloadable statement: ${statementId} due to ${reason}")
+                return ResponseEntity.notFound().build()
+            }
+
+            PDDocument document = statementResult.right().get()
+
             ByteArrayOutputStream outputStream = new ByteArrayOutputStream()
 
             document.save(outputStream)
             document.close()
 
             HttpHeaders headers = new HttpHeaders()
-            headers.add(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=statement.pdf")
-            //todo: replace filename with statement reference id
+            headers.add(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=${statementId}.pdf")
 
             byte[] contentBytes = outputStream.toByteArray()
             inputStream = new ByteArrayInputStream(contentBytes)

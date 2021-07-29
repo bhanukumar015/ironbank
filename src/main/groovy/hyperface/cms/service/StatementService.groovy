@@ -8,6 +8,7 @@ import com.google.zxing.client.j2se.MatrixToImageWriter
 import com.google.zxing.common.BitMatrix
 import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel
 import hyperface.cms.Constants
+import hyperface.cms.commands.GenericErrorResponse
 import hyperface.cms.domains.Card
 import hyperface.cms.domains.CardStatement
 import hyperface.cms.domains.Client
@@ -25,6 +26,7 @@ import hyperface.cms.repository.CustomerTransactionRepository
 import hyperface.cms.repository.TransactionLedgerRepository
 import hyperface.cms.service.pdfbox.PDFBoxServiceImpl
 import hyperface.cms.util.Utilities
+import io.vavr.control.Either
 import org.apache.pdfbox.pdmodel.PDDocument
 import org.apache.pdfbox.pdmodel.PDPage
 import org.apache.pdfbox.pdmodel.common.PDRectangle
@@ -44,9 +46,6 @@ class StatementService {
 
     @Autowired
     CreditAccountRepository creditAccountRepository
-
-    @Autowired
-    CardProgramRepository cardProgramRepository
 
     @Autowired
     CardRepository cardRepository
@@ -86,12 +85,12 @@ class StatementService {
     float cardW = 150
     float cardH = 90
     float cellPadding = 10
-    float[] black = [0/255f, 0/255f, 0/255f]
-    float[] white = [255/255f, 255/255f, 255/255f]
-    float[] lightGrey = [145/255f, 145/255f, 145/255f]
+    float[] black = [0 / 255f, 0 / 255f, 0 / 255f]
+    float[] white = [255 / 255f, 255 / 255f, 255 / 255f]
+    float[] lightGrey = [145 / 255f, 145 / 255f, 145 / 255f]
     float[] darkGrey = [89 / 255f, 89 / 255f, 89 / 255f]
-    float[] blue = [35/255f, 96/255f, 232/255f]
-    float[] green = [22/255f, 99/255f, 51/255f] //client logo dominant color
+    float[] blue = [35 / 255f, 96 / 255f, 232 / 255f]
+    float[] green = [22 / 255f, 99 / 255f, 51 / 255f] //client logo dominant color
 
     float fontSize
     float rowH
@@ -145,22 +144,30 @@ class StatementService {
     ZonedDateTime from
     ZonedDateTime to
 
-
-
-    PDDocument generateStatement(CardStatement cardStatement) {
+    Either<GenericErrorResponse, PDDocument> generateStatement(CardStatement cardStatement) {
         from = Utilities.getStatementStartDate(statement.getDueDate())
         to = Utilities.getStatementEndDate(statement.getDueDate())
 
-        /*statement = cardStatement
-        creditAccount = creditAccountRepository.findById(statement.getId())
-        customer = creditAccountRepository.findByCustomerId(creditAccount.getCustomer().getId())
-        card = cardRepository.findByCreditAccount(creditAccount) //todo: include isPrimary constraint later
-        cardProgram = card.getCardProgram()
-        client = cardProgram.getClient()*/
-        //ledgerList = transactionLedgerRepository.findAllByCreditAccountInRange(creditAccount, from, to) todo: Impl
+        statement = cardStatement
+        Optional<CreditAccount> creditAccountOptional = creditAccountRepository.findById(statement.getId())
+        if (!creditAccountOptional.isPresent()) {
+            return Either.left(new GenericErrorResponse(reason: "Credit Account is not found"))
+        }
 
-        for(TransactionLedger ledgerTxn: ledgerList) {
-            if(ledgerTxn.getTransactionType() == LedgerTransactionType.REPAYMENT) {
+        creditAccount = creditAccountOptional.get()
+        customer = creditAccountRepository.findByCustomerId(creditAccount.getCustomer().getId())
+        List<Card> cards = cardRepository.findByCreditAccountAndIsPrimaryCard(creditAccount, true)
+        if (cards.size() != 1) {
+            return Either.left(new GenericErrorResponse(reason: "Primary Card associated with account: ${creditAccount.getId()} is not found"))
+        }
+
+        card = cards.get(0)
+        cardProgram = card.getCardProgram()
+        client = cardProgram.getClient()
+        ledgerList = transactionLedgerRepository.findAllByCreditAccountInRange(creditAccount, from, to)
+
+        for (TransactionLedger ledgerTxn : ledgerList) {
+            if (ledgerTxn.getTransactionType() == LedgerTransactionType.REPAYMENT) {
                 payments.add(ledgerTxn)
             } else if (ledgerTxn.getTransactionType() == LedgerTransactionType.FEE) { //todo: Auth Type
                 fees.add(ledgerTxn)
@@ -169,30 +176,28 @@ class StatementService {
             } else if (reversal_list.contains(ledgerTxn.getTransactionType())) {
                 reversals.add(ledgerTxn)
             } else {
-                println "Hello"
-                println(ledgerTxn.getTransactionType())
                 txns.add(ledgerTxn)
             }
         }
 
-        for(TransactionLedger txn: txns) {
+        for (TransactionLedger txn : txns) {
             Optional<CustomerTransaction> customerTransaction = customerTransactionRepository.findById(txn.transaction.id)
-            if(customerTransaction.isPresent()) {
-                if(customerTransaction.get().getTransactionCurrency() == "INR") { //todo: refer from enum
-                    if(cash_list.contains(txn.getTransactionType())) {
+            if (customerTransaction.isPresent()) {
+                if (customerTransaction.get().getTransactionCurrency() == "INR") { //todo: refer from enum
+                    if (cash_list.contains(txn.getTransactionType())) {
                         domesticCashTxns.add(txn)
                     } else {
                         domesticTxns.add(txn)
                     }
                 } else {
-                    if(cash_list.contains(txn.getTransactionType())) {
+                    if (cash_list.contains(txn.getTransactionType())) {
                         internationCashTxns.add(txn)
                     } else {
                         internationalTxns.add(txn)
                     }
                 }
             } else {
-                if(cash_list.contains(txn.getTransactionType())) {
+                if (cash_list.contains(txn.getTransactionType())) {
                     domesticCashTxns.add(txn)
                 } else {
                     domesticTxns.add(txn)
@@ -220,7 +225,7 @@ class StatementService {
         drawLastPage()
         pdfBoxService.close()
 
-        return pdfBoxService.getDocument()
+        return Either.right(pdfBoxService.getDocument())
     }
 
     private void addNewPage() {
@@ -256,7 +261,7 @@ class StatementService {
 
             imgW = 85.0
             imgH = 21.0
-            //todo: fetch image from client object
+            //todo: fetch image from client object. Design flow for in case of nullable client logo is required.
             pdfBoxService.drawImage(getImageXObjectFromFile(hdfcFile), updateX((w - imgW) as float), y, imgW, imgH)
 
             updateX(-x + borderW as float)
@@ -331,7 +336,8 @@ class StatementService {
             imgW = 84.75
             imgH = 21.0
             updateX(w - imgW as float)
-            pdfBoxService.drawImage(getImageXObjectFromFile(hdfcFile), x, y, imgW, imgH)  //todo: read from appropriate bank image
+            pdfBoxService.drawImage(getImageXObjectFromFile(hdfcFile), x, y, imgW, imgH)
+            //todo: read from appropriate bank image
 
             updateX(-5)
             pdfBoxService.drawSolidLine(lightGrey, x, y + 5 as float, x, y + 5 as float, th)
@@ -339,7 +345,8 @@ class StatementService {
             imgW = 67.5 //90px
             imgH = 21.0 //28px
             updateX(-20 - imgW as float)
-            pdfBoxService.drawImage(getImageXObjectFromFile(hdfcFile), x, y, imgW, imgH) //todo: need to change client imageXObject
+            pdfBoxService.drawImage(getImageXObjectFromFile(hdfcFile), x, y, imgW, imgH)
+            //todo: need to change client imageXObject
 
             x = borderW
             y = (tH - 50) as float //move to a variable later
@@ -362,7 +369,8 @@ class StatementService {
         //todo: FIX name on card: from where to fetch
         pdfBoxService.writeText(helvetica_bold, white, 10, lx, by, 0, 20, "RAMANATHAN R")
         pdfBoxService.drawImage(getImageXObjectFromFile(visaFile), rx - 25 as float, by, 25, 10) //visa image ??
-        pdfBoxService.drawImage(getImageXObjectFromFile(hdfcFile), lx, y + (cardH / 2) as float, 17, 15) // simcard image
+        pdfBoxService.drawImage(getImageXObjectFromFile(hdfcFile), lx, y + (cardH / 2) as float, 17, 15)
+        // simcard image
     }
 
     private void drawStatementSummary() {
@@ -592,7 +600,7 @@ class StatementService {
 
     private void addQRCode(float sx, float sy, String text, float bW, float w, float h) {
         def hintMap = [:]
-        hintMap.put(EncodeHintType.MARGIN, 0);
+        hintMap.put(EncodeHintType.MARGIN, 0)
         hintMap.put(EncodeHintType.ERROR_CORRECTION, ErrorCorrectionLevel.L)
 
         BitMatrix matrix = new MultiFormatWriter().encode(
@@ -617,7 +625,6 @@ class StatementService {
     private void drawTransactions() {
         rowH = 30
         maxRows = ((tH - 50) / rowH) - 1 as int
-        println(maxRows) //todo: remove
 
         x = borderW
         y = tH - 50 as float
@@ -636,7 +643,7 @@ class StatementService {
     private void drawTransactionalRows(List<TransactionLedger> ledgerList) {
         content = new ArrayList<>()
         txnAmountList = new ArrayList<>()
-        for(TransactionLedger transactionLedger: ledgerList) {
+        for (TransactionLedger transactionLedger : ledgerList) {
             List<String> transaction = new ArrayList<>()
             transaction.add(Utilities.convertDateToCustomFormat(transactionLedger.postingDate, Constants.DD_SLASH_MM_SLASH_YYYY))
             transaction.add(transactionLedger.txnDescription)
@@ -644,7 +651,7 @@ class StatementService {
             txnAmountList.add(Collections.singletonList(String.valueOf(transactionLedger.transactionAmount)))
         }
 
-        if(y < 2*rowH) {
+        if (y < 2 * rowH) {
             addNewPage()
         }
 
@@ -652,7 +659,7 @@ class StatementService {
         start = 0
         end = Math.min(currRows, content.size()) - 1
 
-        while(end != content.size() - 1) {
+        while (end != content.size() - 1) {
             drawTransactionContent(content[start..end])
             drawTransactionAmounts(txnAmountList[start..end])
             addNewPage()
@@ -660,19 +667,19 @@ class StatementService {
             end = Math.min(start + maxRows, content.size()) - 1
         }
 
-        if((end - start + 1) > 0) {
+        if ((end - start + 1) > 0) {
             drawTransactionContent(content[start..end])
             drawTransactionAmounts(txnAmountList[start..end])
         }
         updateY(-(rowH * ((end - start + 1) + 1) - 20) as float)
 
-        if(y < 2*rowH) {
+        if (y < 2 * rowH) {
             addNewPage()
         }
     }
 
     private void drawPayments() {
-        if(payments.size() == 0) {
+        if (payments.size() == 0) {
             return
         }
 
@@ -687,7 +694,7 @@ class StatementService {
     }
 
     private void drawOtherFeesAndCharges() {
-        if(fees.size() == 0) {
+        if (fees.size() == 0) {
             return
         }
         pdfBoxService.writeText(helvetica_bold, black, 10, x, updateY(-25), 0, 100, "Other Fees & Charges")
@@ -699,7 +706,7 @@ class StatementService {
     }
 
     private void drawEMITxns() {
-        if(emis.size() == 0) {
+        if (emis.size() == 0) {
             return
         }
         pdfBoxService.writeText(helvetica_bold, black, 10, x, updateY(-25), 0, 100, "Transactions for your Card ending: XXXX XXXX XXXX 1234 - Ramnathan R")
@@ -713,7 +720,7 @@ class StatementService {
     }
 
     private void drawReversalsAndRefunds() {
-        if(reversals.size() == 0) {
+        if (reversals.size() == 0) {
             return
         }
         pdfBoxService.writeText(helvetica_bold, black, 10, x, updateY(-25), 0, 100, "Reversal & Refund")
@@ -725,7 +732,7 @@ class StatementService {
     }
 
     private void drawDomesticTxns() {
-        if(domesticTxns.size() == 0) {
+        if (domesticTxns.size() == 0) {
             return
         }
         pdfBoxService.writeText(helvetica_bold, black, 10, x, updateY(-25), 0, 100, "Domestic Transactions")
@@ -737,7 +744,7 @@ class StatementService {
     }
 
     private void drawDomesticCashTxns() {
-        if(domesticCashTxns.size() == 0) {
+        if (domesticCashTxns.size() == 0) {
             return
         }
         updateY(10)
@@ -747,7 +754,7 @@ class StatementService {
     }
 
     private void drawInternationalTxns() {
-        if(internationalTxns.size() == 0) {
+        if (internationalTxns.size() == 0) {
             return
         }
         pdfBoxService.writeText(helvetica_bold, black, 10, x, updateY(-25), 0, 100, "International Transactions")
@@ -759,7 +766,7 @@ class StatementService {
     }
 
     private void drawInternationCashTxns() {
-        if(internationCashTxns.size() == 0) {
+        if (internationCashTxns.size() == 0) {
             return
         }
 
@@ -794,12 +801,12 @@ class StatementService {
         y = (tH - 80) as float
         pdfBoxService.writeText(helvetica_bold, black, fontSize, x, y, 0, 100, "Important Notice")
         updateY(-10)
-        pdfBoxService.drawSolidLine([145/255f, 145/255f, 145/255f] as float[], x, y, x + w as float, y, th)
+        pdfBoxService.drawSolidLine([145 / 255f, 145 / 255f, 145 / 255f] as float[], x, y, x + w as float, y, th)
 
         updateY(-20)
         for (int i = 0; i < content.size(); i++) {
             pdfBoxService.writeText(helvetica, black, 7.5, x, y, -12, 160, content[i][0])
-            updateY(-((content[i][0].length()/160) * 12) - 35)
+            updateY(-((content[i][0].length() / 160) * 12) - 35)
         }
         drawFooter()
     }
@@ -841,7 +848,7 @@ class StatementService {
         y = (footerH - 30 + 10) as float
         text = "Invoice No - May 21/419666" << Constants.DELIMITER <<
                 "Account No. - 2065309022860346492"
-        pdfBoxService.writeText( helvetica, white, 7.5, x, y, -10, 35, text)
+        pdfBoxService.writeText(helvetica, white, 7.5, x, y, -10, 35, text)
 
         updateY(-40)
         text = "Issued By:"
