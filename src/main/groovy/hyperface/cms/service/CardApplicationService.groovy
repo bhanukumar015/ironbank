@@ -29,6 +29,9 @@ import hyperface.cms.repository.cardapplication.FixedDepositDetailRepository
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Service
 
+import java.time.ZoneId
+import java.time.ZonedDateTime
+
 @Service
 @Slf4j
 class CardApplicationService {
@@ -235,12 +238,15 @@ class CardApplicationService {
         // and rest of Nominee FATCA details from "fixedDepositDetail"
 
         //TODO: invoke Bank FD booking API
-        String fdAccountNumber = "" // will get this as part of the above API response
+        // will get these as part of the above API response
+        String fdAccountNumber = ""
+        ZonedDateTime fdMaturityDate = ZonedDateTime.now(ZoneId.of("UTC")).plusYears(2)
 
         // store FD Account Number
         fixedDepositDetail
                 .tap {
                     accountNumber = fdAccountNumber
+                    maturityDate = fdMaturityDate
                 }
         fixedDepositDetailRepository.save(fixedDepositDetail)
 
@@ -251,6 +257,7 @@ class CardApplicationService {
                     applicationRefId = cardApplication.getId()
                     fixedDepositRefId = fixedDepositDetail.getId()
                     fixedDepositAccountNumber = fdAccountNumber
+                    fixedDepositMaturityDate = fdMaturityDate.toString()
                 }
     }
 }

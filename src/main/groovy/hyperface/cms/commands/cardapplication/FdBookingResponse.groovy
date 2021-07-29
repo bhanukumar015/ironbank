@@ -12,6 +12,7 @@ class FdBookingResponse {
     FdBookingStatus status
     String errorMessage
     String fixedDepositAccountNumber
+    String fixedDepositMaturityDate
     String applicationRefId
     String fixedDepositRefId
 }
