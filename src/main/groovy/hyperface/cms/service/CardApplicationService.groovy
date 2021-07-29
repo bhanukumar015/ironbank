@@ -159,6 +159,7 @@ class CardApplicationService {
         //TODO: initiate penny drop transaction
 
         // return response
+        log.info("API:[bankverification] - Bank verification complete for applicationID: {}", request.getApplicationRefId())
         CreditCardProgram cardProgram = cardProgramRepository.findById(cardApplication.getProgramId()).get()
         return new CustomerBankVerificationResponse()
                 .tap {
@@ -196,6 +197,7 @@ class CardApplicationService {
         FixedDepositDetail savedFdDetail = fixedDepositDetailRepository.save(fixedDepositDetail)
 
         // return response
+        log.info("API:[fundtransfer] - Fund transfer complete for applicationID: {}", request.getApplicationRefId())
         return new FixedDepositFundTransferResponse()
                 .tap {
                     status = FixedDepositFundTransferResponse.TransferStatus.SUCCESS
@@ -219,6 +221,7 @@ class CardApplicationService {
         fixedDepositDetailRepository.save(fdDetail)
 
         // return response
+        log.info("API:[FATCA declaration] - FATCA and Nominee declaration complete for applicationID: {}", request.getApplicationRefId())
         return new NomineeInfoAndFatcaResponse()
                 .tap {
                     status = NomineeInfoAndFatcaResponse.FatcaStatus.SUCCESS
@@ -251,6 +254,7 @@ class CardApplicationService {
         fixedDepositDetailRepository.save(fixedDepositDetail)
 
         // return response
+        log.info("API:[FDBooking] - FD booking complete for applicationID: {}", request.getApplicationRefId())
         return new FdBookingResponse()
                 .tap {
                     status = FdBookingResponse.FdBookingStatus.SUCCESS

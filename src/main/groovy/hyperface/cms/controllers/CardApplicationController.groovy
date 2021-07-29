@@ -122,6 +122,7 @@ class CardApplicationController {
         Optional<CardApplication> cardApplicationOptional = cardApplicationRepository.findById(request.getApplicationRefId())
         if (!cardApplicationOptional.isPresent()) {
             String errorMessage = "Application with reference ID: ${request.getApplicationRefId()} not found."
+            log.error("Error - API:[bankverification] - {}", errorMessage)
             return this.buildBankVerificationResponse(null, CustomerBankVerificationResponse.VerificationStatus.FAILED, HttpStatus.BAD_REQUEST, errorMessage, null, null)
         }
 
@@ -138,11 +139,13 @@ class CardApplicationController {
         Optional<CardApplication> cardApplicationOptional = cardApplicationRepository.findById(request.getApplicationRefId())
         if (!cardApplicationOptional.isPresent()) {
             String errorMessage = "Application with reference ID: ${request.getApplicationRefId()} not found."
+            log.error("Error - API:[fundtransfer] - {}", errorMessage)
             return this.buildFundTransferResponse(null, FixedDepositFundTransferResponse.TransferStatus.FAILED, HttpStatus.BAD_REQUEST, errorMessage, null, null, null)
         }
 
         // process fund transfer and return response
         FixedDepositFundTransferResponse response = cardApplicationService.processFundTransfer(request, cardApplicationOptional.get())
+
         return ResponseEntity
                 .status(response.getStatus() == FixedDepositFundTransferResponse.TransferStatus.SUCCESS ? HttpStatus.OK : HttpStatus.FAILED_DEPENDENCY)
                 .body(response)
@@ -154,6 +157,7 @@ class CardApplicationController {
         Optional<CardApplication> cardApplicationOptional = cardApplicationRepository.findById(request.getApplicationRefId())
         if (!cardApplicationOptional.isPresent()) {
             String errorMessage = "Application with reference ID: ${request.getApplicationRefId()} not found."
+            log.error("Error - API:[declaration] - {}", errorMessage)
             return this.buildNomineeAndFatcaResponse(null, FixedDepositFundTransferResponse.TransferStatus.FAILED, HttpStatus.BAD_REQUEST, errorMessage, null)
         }
 
@@ -163,12 +167,14 @@ class CardApplicationController {
         if (!fixedDepositDetailOptional.isPresent()
                 || (fdDetail = fixedDepositDetailOptional.get()).getCardApplication().getId() != request.getApplicationRefId()) {
             String errorMessage = "FixedDepositRefId: ${request.getFixedDepositRefId()} is not associated with ApplictionReferenceID: ${request.getApplicationRefId()}."
+            log.error("Error - API:[declaration] - {}", errorMessage)
             return this.buildNomineeAndFatcaResponse(null, NomineeInfoAndFatcaResponse.FatcaStatus.FAILED, HttpStatus.BAD_REQUEST, errorMessage, null)
         }
 
         // check for FATCA confirmation
         if (!request.getFatcaConfirmed()) {
             String errorMessage = "Customer did not mandate the declaration for ApplictionReferenceID: ${request.getApplicationRefId()}."
+            log.error("Error - API:[declaration] - {}", errorMessage)
             return this.buildNomineeAndFatcaResponse(null, NomineeInfoAndFatcaResponse.FatcaStatus.FAILED, HttpStatus.BAD_REQUEST, errorMessage, null)
         }
 
@@ -185,6 +191,7 @@ class CardApplicationController {
         Optional<CardApplication> cardApplicationOptional = cardApplicationRepository.findById(request.getApplicationRefId())
         if (!cardApplicationOptional.isPresent()) {
             String errorMessage = "Application with reference ID: ${request.getApplicationRefId()} not found."
+            log.error("Error - API:[fixeddeposit] - {}", errorMessage)
             return this.buildFdBookingResponse(null, FdBookingResponse.FdBookingStatus.FAILED, HttpStatus.BAD_REQUEST, errorMessage, null, null)
         }
 
@@ -194,6 +201,7 @@ class CardApplicationController {
         if (!fixedDepositDetailOptional.isPresent()
                 || (fdDetail = fixedDepositDetailOptional.get()).getCardApplication().getId() != request.getApplicationRefId()) {
             String errorMessage = "FixedDepositRefId: ${request.getFixedDepositRefId()} is not associated with ApplictionReferenceID: ${request.getApplicationRefId()}."
+            log.error("Error - API:[fixeddeposit] - {}", errorMessage)
             return this.buildFdBookingResponse(null, FdBookingResponse.FdBookingStatus.FAILED, HttpStatus.BAD_REQUEST, errorMessage, null, null)
         }
 
@@ -204,6 +212,7 @@ class CardApplicationController {
         if (request.getCreditLimit() < (fdAmount * creditCardProgram.getMinCreditLineFdPercentage()) / 100.0
                 || request.getCreditLimit() > (fdAmount * creditCardProgram.getMaxCreditLineFdPercentage()) / 100.0) {
             String errorMessage = "Credit Limit is not in the defined range."
+            log.error("Error - API:[fixeddeposit] - {}", errorMessage)
             return this.buildFdBookingResponse(null, FdBookingResponse.FdBookingStatus.FAILED, HttpStatus.BAD_REQUEST, errorMessage, null, null)
         }
 
