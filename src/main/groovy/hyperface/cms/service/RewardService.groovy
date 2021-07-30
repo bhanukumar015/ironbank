@@ -1,9 +1,9 @@
 package hyperface.cms.service
 
 import groovy.util.logging.Slf4j
-import hyperface.cms.commands.Operation
-import hyperface.cms.commands.RewardsRequest
-import hyperface.cms.commands.RewardsResponse
+import hyperface.cms.commands.rewards.Operation
+import hyperface.cms.commands.rewards.RewardsRequest
+import hyperface.cms.commands.rewards.RewardsResponse
 import hyperface.cms.domains.CreditAccount
 import hyperface.cms.domains.Transaction
 import hyperface.cms.domains.rewards.Reward
@@ -15,8 +15,6 @@ import hyperface.cms.repository.rewards.RewardsOfferRepository
 import io.vavr.control.Try
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
-import org.springframework.http.MediaType
-import org.springframework.http.ResponseEntity
 import org.springframework.stereotype.Service
 import org.springframework.web.server.ResponseStatusException
 
@@ -34,7 +32,7 @@ class RewardService {
     private TransactionLedgerRepository ledgerRepository
 
 
-    ResponseEntity<RewardsResponse> getSummary(CreditAccount creditAccount) {
+    RewardsResponse getSummary(CreditAccount creditAccount) {
         Reward reward = creditAccount.getReward()
 
         // return error response if no rewards program is associated with this account
@@ -46,7 +44,7 @@ class RewardService {
 
         RewardsOffer offer = offerRepository.findById(reward.getOffer().getId()).get()
         //return success response
-        RewardsResponse rewardResponse = new RewardsResponse()
+        RewardsResponse rewardsResponse = new RewardsResponse()
                 .tap {
                     creditAccountId = creditAccount.getId()
                     currentRewardPointsBalance = reward.getRewardBalance()
@@ -54,14 +52,11 @@ class RewardService {
                     conversionCurrency = offer.getTargetConversionCurrency()
                     amountEquivalentToRewardPoints = offer.getCurrencyConversionRatio() * reward.getRewardBalance()
                 }
-        return ResponseEntity
-                .ok()
-                .contentType(MediaType.APPLICATION_JSON)
-                .body(rewardResponse)
+        return rewardsResponse
 
     }
 
-    ResponseEntity<RewardsResponse> executeOperation(final RewardsRequest request, final CreditAccount creditAccount, final Reward reward) {
+    RewardsResponse executeOperation(final RewardsRequest request, final CreditAccount creditAccount, final Reward reward) {
         switch (request.getOperation() as Operation) {
             case Operation.DEBIT: {
                 if (reward.getRewardBalance() >= request.getRewardPointsCount()
@@ -72,15 +67,12 @@ class RewardService {
                     }
                     Reward savedReward = rewardRepository.save(reward)
                     //return success response
-                    RewardsResponse rewardResponse = new RewardsResponse()
+                    RewardsResponse rewardsResponse = new RewardsResponse()
                             .tap {
                                 creditAccountId = creditAccount.getId()
                                 currentRewardPointsBalance = savedReward.getRewardBalance()
                             }
-                    return ResponseEntity
-                            .ok()
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .body(rewardResponse)
+                    return rewardsResponse
 
                 } else {
                     // throw error, since rewards balance is insufficient for a debit operation
@@ -96,15 +88,12 @@ class RewardService {
                 }
                 Reward savedReward = rewardRepository.save(reward)
                 //return success response
-                RewardsResponse rewardResponse = new RewardsResponse()
+                RewardsResponse rewardsResponse = new RewardsResponse()
                         .tap {
                             creditAccountId = creditAccount.getId()
                             currentRewardPointsBalance = savedReward.getRewardBalance()
                         }
-                return ResponseEntity
-                        .ok()
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .body(rewardResponse)
+                return rewardsResponse
             }
         }
     }

@@ -27,6 +27,8 @@ class CreditAccount extends Account {
     String defaultCurrency
     Double approvedCreditLimit
     Double availableCreditLimit
+    Double approvedCashWithdrawalLimit
+    Double availableCashWithdrawalLimit
     Boolean allowTxnLog = true
     Date lastTxnDate
     ZonedDateTime currentBillingStartDate

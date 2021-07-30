@@ -2,6 +2,7 @@ package hyperface.cms.service
 
 import hyperface.cms.Constants
 import hyperface.cms.appdata.TxnNotEligible
+import hyperface.cms.commands.AuthSettlementRequest
 import hyperface.cms.commands.AuthorizationRequest
 import hyperface.cms.commands.CustomerTransactionRequest
 import hyperface.cms.commands.CustomerTransactionResponse
@@ -68,7 +69,7 @@ class PaymentService {
     @Autowired
     private TransactionLedgerRepository transactionLedgerRepository
 
-    public Either<TxnNotEligible, Boolean> checkEligibility(CustomerTransactionRequest req) {
+    Either<TxnNotEligible, Boolean> checkEligibility(CustomerTransactionRequest req) {
         if(req.card.hotlisted) {
             return Either.left(new TxnNotEligible(reason: "Card is blocked"))
         }
@@ -81,20 +82,20 @@ class PaymentService {
         return Either.right(true)
     }
 
-    public Either<GenericErrorResponse,CustomerTransaction> createCustomerTxn(CustomerTransactionRequest req) {
+    Either<GenericErrorResponse,CustomerTransaction> createCustomerTxn(CustomerTransactionRequest req) {
 
         Account account = req.card.creditAccount
         if (account == null) {
-            return Either.left(new GenericErrorResponse(reason:  "Account not found"))
+            return Either.left(new GenericErrorResponse(reason: "Account not found"))
         }
         CustomerTransaction txn = new CustomerTransaction()
         txn.card = req.card
         txn.txnDate = req.transactionDate ?: ZonedDateTime.now()
-        txn.transactionType = (TransactionType)req.transactionType
+        txn.transactionType = req.transactionType as TransactionType
         txn.txnDescription = req.transactionDescription
         txn.transactionAmount = req.transactionAmount
         txn.transactionCurrency = req.transactionCurrency
-        txn.authorizationType = AuthorizationType.NOT_APPLICABLE
+        txn.txnStatus = TransactionStatus.APPROVED
         txn.billingAmount = req.transactionAmount
         txn.billingCurrency = req.transactionCurrency
         if (txn.transactionCurrency != account.defaultCurrency) {
@@ -108,29 +109,49 @@ class PaymentService {
         if (txn.billingAmount > account.availableCreditLimit) {
             return Either.left(new GenericErrorResponse(reason:  "Insufficient balance"))
         }
-        txn.txnStatus = TransactionStatus.NOT_APPLICABLE
+        if (txn.transactionType == TransactionType.SETTLEMENT_DEBIT_CASH) {
+            if (txn.billingAmount > account.availableCashWithdrawalLimit) {
+                return Either.left(new GenericErrorResponse(reason:  "Insufficient Cash balance"))
+            }
+            account.availableCashWithdrawalLimit -= txn.billingAmount
+        }
+        txn.txnStatus = TransactionStatus.APPROVED
         txn.mid = req.merchantTerminalId
         txn.tid = req.merchantTerminalId
         txn.mcc = req.merchantCategoryCode
         customerTransactionRepository.save(txn)
-        if (txn.transactionType == TransactionType.SETTLEMENT_DEBIT)
-            account.availableCreditLimit -= txn.billingAmount
-        else
-            account.availableCreditLimit += txn.billingAmount
-        creditAccountRepository.save(account)
-
         switch (txn.transactionType) {
             case TransactionType.SETTLEMENT_DEBIT:
+            case TransactionType.SETTLEMENT_DEBIT_CASH:
+            case TransactionType.REPAYMENT_REVERSAL:
+                account.availableCreditLimit -= txn.billingAmount
+                account.availableCashWithdrawalLimit = Math.min(account.availableCreditLimit,account.availableCashWithdrawalLimit)
                 createDebitEntry(txn)
                 break
+
             case TransactionType.SETTLEMENT_CREDIT:
+            case TransactionType.SETTLEMENT_CREDIT_CASH:
+            case TransactionType.REPAYMENT:
+                account.availableCreditLimit += txn.billingAmount
+                account.availableCashWithdrawalLimit = Math.min(account.availableCreditLimit,account.approvedCashWithdrawalLimit)
                 createCreditEntry(txn)
                 break
+
+            case TransactionType.AUTHORIZE:
+                account.availableCreditLimit -= txn.billingAmount
+                account.availableCashWithdrawalLimit = Math.min(account.availableCreditLimit,account.availableCashWithdrawalLimit)
+                break
+
+            case TransactionType.AUTHORIZATION_REVERSAL:
+                account.availableCreditLimit += txn.billingAmount
+                account.availableCashWithdrawalLimit = Math.min(account.availableCreditLimit,account.approvedCashWithdrawalLimit)
+                break
         }
+        creditAccountRepository.save(account)
         return Either.right(txn)
     }
 
-    public CustomerTransactionResponse getCustomerTransactionResponse(CustomerTransaction txn) {
+    CustomerTransactionResponse getCustomerTransactionResponse(CustomerTransaction txn) {
         CustomerTransactionResponse txnResponse = new CustomerTransactionResponse()
         txnResponse.id = txn.id
         txnResponse.cardId = txn.card.id
@@ -144,6 +165,7 @@ class PaymentService {
 
         return txnResponse
     }
+
     public CustomerTxn processAuthorization(AuthorizationRequest req) {
         CustomerTxn txn = createCustomerTxn(req)
         // reduce this balance from the available credit limit
@@ -166,56 +188,61 @@ class PaymentService {
         return txn
     }
 
-    // TODO - how to make sure that this is processed only once?
-   @Deprecated public void processSettlementDebit(SettlementRequest req) {
-        Card card = cardRepository.findById(req.cardId).get()
-        assert card != null
-        CreditAccount creditAccount = card.creditAccount
+    Either<GenericErrorResponse,CustomerTransaction> processSettlementDebit(AuthSettlementRequest req) {
 
-        CustomerTxn txn = customerTxnRepository.findAuthTxnByCardAndRRN(card, req.retrievalReferenceNumber)
-        // an approximate defense
-        if(txn.capturedAmount + req.settlementAmount > 1.2 * txn.authorizedAmount) {
-            throw new IllegalArgumentException("This entry looks to have been processed already")
+        Account account = req.card.creditAccount
+
+        Optional<CustomerTransaction> customerTransaction = customerTransactionRepository.findById(req.transactionId)
+        if (!customerTransaction.isPresent()) {
+            return Either.left(new GenericErrorResponse(reason: "Invalid transactionId"))
         }
-        txn.postedToLedger = true
-        LedgerEntry ledgerEntry = createDebitEntry(creditAccount, txn, req.settlementAmount)
-        if(txn.capturedAmount < txn.authorizedAmount && (txn.capturedAmount + req.settlementAmount) > txn.authorizedAmount) {
-            creditAccount.availableCreditLimit -= ((txn.capturedAmount + req.settlementAmount) - txn.authorizedAmount)
+        CustomerTransaction txn = customerTransaction.get()
+        if (txn.txnStatus != TransactionStatus.APPROVED) {
+            return Either.left(new GenericErrorResponse(reason: "This transaction has already been settled"))
         }
-        else if(txn.capturedAmount >= txn.authorizedAmount) {
-            creditAccount.availableCreditLimit -= req.settlementAmount
+        double settlementBillingAmount = req.settlementAmount
+        if (req.settlementCurrency != account.defaultCurrency) {
+            settlementBillingAmount = getConvertedAmount(req.settlementCurrency, account.defaultCurrency, req.settlementAmount)
         }
-        creditAccount.currentBalance -= ledgerEntry.amount
-        txn.capturedAmount += req.settlementAmount
-        // set txntype
-        if(txn.txnType == Constants.TxnType.SETTLE_DEBIT) {
-            ledgerEntry.txnType = Constants.TxnType.PURCHASE
+        TransactionLedger ledgerEntry = createDebitEntry(txn, req.settlementAmount)
+        account.availableCreditLimit -= (settlementBillingAmount - txn.billingAmount)
+        if (settlementBillingAmount == txn.billingAmount) {
+            txn.txnStatus = TransactionStatus.SETTLED
+        } else {
+            txn.txnStatus = TransactionStatus.PARTIALLY_SETTLED
         }
-        else if(txn.txnType == Constants.TxnType.SETTLE_DEBIT_CASH) {
-            ledgerEntry.txnType = Constants.TxnType.CASH_WITHDRAWAL
-        }
-        ledgerEntryRepository.save(ledgerEntry)
-        creditAccountRepository.save(creditAccount)
+        creditAccountRepository.save(account)
         customerTxnRepository.save(txn)
+        return Either.right(txn)
     }
 
-    public void processSettlementCredit(SettlementRequest req) {
-        Card card = cardRepository.findById(req.cardId).get()
-        assert card != null
-        CreditAccount creditAccount = card.creditAccount
-        CustomerTxn txn = customerTxnRepository.findAuthTxnByCardAndRRN(card, req.retrievalReferenceNumber)
-        LedgerEntry ledgerEntry = createCreditEntry(creditAccount, txn, req.settlementAmount)
-        creditAccount.currentBalance += ledgerEntry.amount
-        if(txn.txnType == Constants.TxnType.SETTLE_CREDIT) {
-            ledgerEntry.txnType = Constants.TxnType.PURCHASE_REVERSAL
+    Either<GenericErrorResponse,CustomerTransaction> processSettlementCredit(AuthSettlementRequest req) {
+
+        Account account = req.card.creditAccount
+        Optional<CustomerTransaction> customerTransaction = customerTransactionRepository.findById(req.transactionId)
+        if (!customerTransaction.isPresent()) {
+            return Either.left(new GenericErrorResponse(reason: "Invalid transactionId"))
         }
-        else if(txn.txnType == Constants.TxnType.SETTLE_CREDIT_CASH) {
-            ledgerEntry.txnType = Constants.TxnType.CASH_WITHDRAWAL_REVERSAL
+        CustomerTransaction txn = customerTransaction.get()
+        if (txn.txnStatus != TransactionStatus.APPROVED) {
+            return Either.left(new GenericErrorResponse(reason: "This transaction has already been settled"))
         }
-        ledgerEntryRepository.save(ledgerEntry)
-        creditAccountRepository.save(creditAccount)
+        double settlementBillingAmount = req.settlementAmount
+        if (req.settlementCurrency != account.defaultCurrency) {
+            settlementBillingAmount = getConvertedAmount(req.settlementCurrency, account.defaultCurrency, req.settlementAmount)
+        }
+        TransactionLedger ledgerEntry = createCreditEntry(txn, req.settlementAmount)
+        account.availableCreditLimit += (settlementBillingAmount - txn.billingAmount)
+        if (settlementBillingAmount == txn.billingAmount) {
+            txn.txnStatus = TransactionStatus.SETTLED
+        } else {
+            txn.txnStatus = TransactionStatus.PARTIALLY_SETTLED
+        }
+        creditAccountRepository.save(account)
         customerTxnRepository.save(txn)
+        return Either.right(txn)
     }
+
 
     public Integer getInterestRateForTxn(TransactionLedger ledgerEntry) {
         CreditCardProgram program = ledgerEntry.transaction.card.cardProgram
@@ -232,16 +259,30 @@ class PaymentService {
         debitEntry.txnDescription = txn.txnDescription
         debitEntry.postingDate = ZonedDateTime.now()
         debitEntry.moneyMovementIndicator = MoneyMovementIndicator.DEBIT
-        if (txn.transactionType == TransactionType.SETTLEMENT_DEBIT) {
-            debitEntry.transactionType = LedgerTransactionType.PURCHASE
-        }
+        debitEntry.transactionType = getLedgerTransactionType(txn.transactionType)
         debitEntry.openingBalance = account.currentBalance
         debitEntry.closingBalance = account.currentBalance - txn.billingAmount
         debitEntry.transaction = txn
-        debitEntry.account = account
+        debitEntry.creditAccount = account
         transactionLedgerRepository.save(debitEntry)
-        txn.txnStatus = TransactionStatus.APPROVED
-        customerTransactionRepository.save(txn)
+        account.currentBalance = debitEntry.closingBalance
+        creditAccountRepository.save(account)
+        return debitEntry
+    }
+
+    private TransactionLedger createDebitEntry(CustomerTransaction txn, Double settlementAmount) {
+        CreditAccount account = txn.card.creditAccount
+        TransactionLedger debitEntry = new TransactionLedger()
+        debitEntry.transactionAmount = settlementAmount
+        debitEntry.txnDescription = txn.txnDescription
+        debitEntry.postingDate = ZonedDateTime.now()
+        debitEntry.moneyMovementIndicator = MoneyMovementIndicator.DEBIT
+        debitEntry.transactionType = LedgerTransactionType.PURCHASE
+        debitEntry.openingBalance = account.currentBalance
+        debitEntry.closingBalance = account.currentBalance - txn.billingAmount
+        debitEntry.transaction = txn
+        debitEntry.creditAccount = account
+        transactionLedgerRepository.save(debitEntry)
         account.currentBalance = debitEntry.closingBalance
         creditAccountRepository.save(account)
         return debitEntry
@@ -254,20 +295,35 @@ class PaymentService {
         creditEntry.txnDescription = txn.txnDescription
         creditEntry.postingDate = ZonedDateTime.now()
         creditEntry.moneyMovementIndicator = MoneyMovementIndicator.CREDIT
-        if (txn.transactionType == TransactionType.SETTLEMENT_CREDIT) {
-            creditEntry.transactionType = LedgerTransactionType.PURCHASE_REVERSAL
-        }
+        creditEntry.transactionType = getLedgerTransactionType(txn.transactionType)
         creditEntry.openingBalance = account.currentBalance
         creditEntry.closingBalance = account.currentBalance + txn.billingAmount
         creditEntry.transaction = txn
-        creditEntry.account = account
+        creditEntry.creditAccount = account
         transactionLedgerRepository.save(creditEntry)
-        txn.txnStatus = TransactionStatus.APPROVED
-        customerTransactionRepository.save(txn)
         account.currentBalance = creditEntry.closingBalance
         creditAccountRepository.save(account)
         return creditEntry
     }
+
+    private TransactionLedger createCreditEntry(CustomerTransaction txn, Double settleAmount) {
+        CreditAccount account = txn.card.creditAccount
+        TransactionLedger creditEntry = new TransactionLedger()
+        creditEntry.transactionAmount = settleAmount
+        creditEntry.txnDescription = txn.txnDescription
+        creditEntry.postingDate = ZonedDateTime.now()
+        creditEntry.moneyMovementIndicator = MoneyMovementIndicator.CREDIT
+        creditEntry.transactionType = getLedgerTransactionType(txn.transactionType)
+        creditEntry.openingBalance = account.currentBalance
+        creditEntry.closingBalance = account.currentBalance + settleAmount
+        creditEntry.transaction = txn
+        creditEntry.creditAccount = account
+        transactionLedgerRepository.save(creditEntry)
+        account.currentBalance = creditEntry.closingBalance
+        creditAccountRepository.save(account)
+        return creditEntry
+    }
+
 
     public Double calculateInterest(CreditAccount account, TransactionLedger ledgerEntry) {
         Double amount = ledgerEntry.transactionAmount
@@ -284,9 +340,30 @@ class PaymentService {
 
     public Double calculateInterestByDate(CreditAccount account,ZonedDateTime startDate, ZonedDateTime endDate, Double amount) {
         Double interestRate = account.cards[0].cardProgram.annualizedPercentageRateInBps
-        Integer noOfDays = ChronoUnit.DAYS.between(startDate,endDate) + 1
+        Integer noOfDays = ChronoUnit.DAYS.between(startDate, endDate) + 1
         Integer noOfDaysInBaseYear = 365
-        Double interestAmount = amount * (1/noOfDaysInBaseYear) * noOfDays * (interestRate/100)
+        Double interestAmount = amount * (1 / noOfDaysInBaseYear) * noOfDays * (interestRate / 100)
         return interestAmount
+    }
+
+    private LedgerTransactionType getLedgerTransactionType(TransactionType txnType) {
+        if (txnType.SETTLEMENT_DEBIT) {
+            return LedgerTransactionType.PURCHASE
+        } else if (txnType.SETTLEMENT_CREDIT) {
+            return LedgerTransactionType.PURCHASE_REVERSAL
+        } else if (txnType.SETTLEMENT_DEBIT_CASH) {
+            return LedgerTransactionType.CASH_WITHDRAWAL
+        } else if (txnType.SETTLEMENT_CREDIT_CASH) {
+            return LedgerTransactionType.CASH_WITHDRAWAL_REFUND
+        }
+        return txnType as LedgerTransactionType
+    }
+
+    private Double getConvertedAmount(String sourceCurrency, String defaultCurrency, Double amount) {
+        CurrencyConversion currencyConversion =
+                currencyConversionRepository.findBySourceCurrencyAndDestinationCurrency(
+                       sourceCurrency, defaultCurrency)
+        return amount * currencyConversion.conversionRate
+
     }
 }

@@ -22,7 +22,7 @@ class Constants {
     }
 
     enum CardType {
-        Physical, Virtual, VirtualUpgradeToPhysical
+        Physical, Virtual, VirtualUpgradeToPhysical, Phygital
     }
 
     enum LedgerEntryType {
@@ -87,6 +87,32 @@ class Constants {
         PURCHASE_REVERSAL,
         CASH_WITHDRAWAL_REVERSAL,
         CASH_WITHDRAWAL
+    }
+
+    enum Salutation {
+        Mr,
+        Miss,
+        Mrs
+    }
+
+    enum Gender {
+        MALE,
+        FEMALE,
+        OTHER
+    }
+
+    enum MaritalStatus {
+        SINGLE,
+        MARRIED,
+        WIDOWED,
+        SEPARATED,
+        DIVORCED
+    }
+
+    enum Profession {
+        SALARIED,
+        SELF_EMPLOYED,
+        OTHER
     }
 
     public final static String NiumSuccessResponseKey = 'status'

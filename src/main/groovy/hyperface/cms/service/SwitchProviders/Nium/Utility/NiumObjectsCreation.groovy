@@ -5,12 +5,17 @@ import hyperface.cms.commands.CardBlockActionRequest
 import hyperface.cms.commands.CreateCardRequest
 import hyperface.cms.domains.CreditCardProgram
 import hyperface.cms.domains.Customer
+import hyperface.cms.repository.CardRepository
+import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Component
 
 import java.security.InvalidParameterException
 
 @Component
 class NiumObjectsCreation {
+
+    @Autowired
+    CardRepository cardRepository
 
     private static ObjectMapper objectMapper = new ObjectMapper()
 
@@ -45,12 +50,21 @@ class NiumObjectsCreation {
 
     public String createNiumRequestCard(CreateCardRequest cardRequest, CreditCardProgram creditCardProgram){
         Object niumCard = new Object(){
-            String cardIssuanceAction = "NEW"
+            String cardIssuanceAction = (cardRequest.isAddOn) ? "ADD_ON" : "NEW"
+            String demogOverridden = !cardRequest.isPrimaryCardHolder
+            String firstName = cardRequest.addOnCardHolder?.firstName
+            String middleName = cardRequest.addOnCardHolder?.middleName
+            String lastName = cardRequest.addOnCardHolder?.lastName
+            String email = cardRequest.addOnCardHolder?.email
+            String mobile = cardRequest.addOnCardHolder?.mobileNumber
             String cardFeeCurrencyCode = creditCardProgram.baseCurrency
             String cardExpiry = cardRequest.cardExpiry
             String cardType = NiumCardType.fromString(cardRequest.cardType.toString())
             String logoId = creditCardProgram.cardLogoId
             String plasticId = creditCardProgram.cardPlasticId
+            String cardHashId = (cardRequest.isAddOn)
+                    ? cardRepository.findById(cardRequest.primaryCardId)?.get()?.switchCardId
+                    : null
         }
         return objectMapper.writeValueAsString(niumCard)
     }
