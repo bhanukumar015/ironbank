@@ -1,5 +1,6 @@
 package hyperface.cms.domains
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties
 import org.hibernate.annotations.GenericGenerator
 import org.springframework.data.annotation.CreatedDate
 import org.springframework.data.annotation.LastModifiedDate
@@ -36,6 +37,7 @@ class Client {
     @Column(columnDefinition = "MEDIUMTEXT")
     String logo
 
+    @JsonIgnoreProperties("client")
     @OneToOne(mappedBy = "client", cascade = CascadeType.REMOVE)
     ClientKey clientKey
 

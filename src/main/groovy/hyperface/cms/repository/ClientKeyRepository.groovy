@@ -5,5 +5,7 @@ import org.springframework.data.repository.CrudRepository
 
 interface ClientKeyRepository extends CrudRepository<ClientKey, String> {
 
-    ClientKey findByClientId(String clientId);
+    ClientKey findByClientId(String clientId)
+
+    Optional<ClientKey> findBySecretKey(String secretKey)
 }

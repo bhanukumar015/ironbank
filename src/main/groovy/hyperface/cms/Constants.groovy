@@ -125,4 +125,15 @@ class Constants {
 
     /* URL Constants */
     public static final String PATH_CLIENT_BASE_URL = "/client"
+    public static final List<String> CLIENT_AUTH_ROUTES = ['/client/test']
+
+    /* Kong Service related Constants */
+    public static final String API_KEY = "apikey"
+    public static final String KEY_AUTH_PLUGIN = "key-auth"
+    public static final String CONSUMERS_BASE_URL = "/consumers"
+    public static final String SERVICES_BASE_URL = "/services"
+    public static final String PLUGINS_BASE_URL = "/plugins"
+
+    /* Common Terms */
+    public static final String PATH_SEPARATOR = "/"
 }

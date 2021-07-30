@@ -21,6 +21,8 @@ import org.springframework.web.multipart.MultipartFile
 import org.springframework.web.server.ResponseStatusException
 import hyperface.cms.Constants
 
+import javax.servlet.http.HttpServletRequest
+
 @RestController
 @RequestMapping(Constants.PATH_CLIENT_BASE_URL)
 @Slf4j
@@ -41,9 +43,9 @@ class ClientController {
             String logo = Utilities.convertFileToBase64String(multipartFile)
             client.setLogo(logo)
         }
-        client = clientRepository.save(client)
 
         ClientKey clientKey = clientService.createClientKey(client)
+        clientRepository.save(client)
         clientKeyRepository.save(clientKey)
         return ResponseEntity.ok(client)
     }
@@ -86,5 +88,13 @@ class ClientController {
     @RequestMapping(value = "/{clientId}", method = RequestMethod.DELETE)
     void delete(@PathVariable(name = "clientId") String clientId) {
         clientRepository.deleteById(clientId)
+    }
+
+    /* Test Route which requires authentication */
+    @RequestMapping(value = "/test", method = RequestMethod.GET)
+    String ping(HttpServletRequest request) {
+        Client client = request.getSession().getAttribute("client") as Client
+        log.info("LoggedIn Client: ${client.getName()}")
+        return "pong"
     }
 }
