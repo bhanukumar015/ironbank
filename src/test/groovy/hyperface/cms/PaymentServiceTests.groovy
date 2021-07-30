@@ -6,6 +6,7 @@ import hyperface.cms.appdata.TxnNotEligible
 import hyperface.cms.commands.CustomerTransactionRequest
 import hyperface.cms.commands.GenericErrorResponse
 import hyperface.cms.domains.Card
+import hyperface.cms.domains.CreditAccount
 import hyperface.cms.domains.CreditCardProgram
 import hyperface.cms.domains.CreditCardScheduleOfCharges
 import hyperface.cms.domains.CustomerTransaction
@@ -13,13 +14,22 @@ import hyperface.cms.domains.CustomerTxn
 import hyperface.cms.domains.interest.Condition
 import hyperface.cms.domains.interest.InterestCriteria
 import hyperface.cms.domains.ledger.LedgerEntry
+import hyperface.cms.domains.ledger.TransactionLedger
+import hyperface.cms.model.enums.LedgerTransactionType
+import hyperface.cms.model.enums.MoneyMovementIndicator
+import hyperface.cms.repository.CardProgramRepository
 import hyperface.cms.repository.CardRepository
+import hyperface.cms.repository.CreditAccountRepository
+
+import hyperface.cms.repository.TransactionLedgerRepository
 import hyperface.cms.service.PaymentService
 import io.vavr.control.Either
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
+
+import java.util.function.DoubleBinaryOperator
 
 @SpringBootTest
 class PaymentServiceTests {
@@ -33,6 +43,15 @@ class PaymentServiceTests {
 
 	@Autowired
 	CardRepository cardRepository
+
+	@Autowired
+	TransactionLedgerRepository transactionLedgerRepository
+
+	@Autowired
+	CreditAccountRepository creditAccountRepository
+
+	@Autowired
+	CardProgramRepository cardProgramRepository
 
 	Integer annualizedPercentageRateInBps = 4500
 	int feeApr = 4000
@@ -63,7 +82,7 @@ class PaymentServiceTests {
 		CreditCardScheduleOfCharges charges = new CreditCardScheduleOfCharges()
 		CreditCardProgram creditCardProgram = new CreditCardProgram()
 		creditCardProgram.annualizedPercentageRateInBps = annualizedPercentageRateInBps
-		creditCardProgram.scheduleOfCharges = charges
+
 		charges.name = "Test charges"
 
 		// don't charge interest for fee transactions in the given cycle
@@ -84,6 +103,7 @@ class PaymentServiceTests {
 		cri1.precedence = 5000
 
 		charges.interestCriteriaList = [cri1, cri2]
+		creditCardProgram.scheduleOfCharges = charges
 		return creditCardProgram
 	}
 
@@ -122,4 +142,7 @@ class PaymentServiceTests {
 		Assertions.assertTrue(result.right().get())
 		Assertions.assertTrue(txnResult.right().get().billingAmount >= 1170)
 	}
+
+
+
 }

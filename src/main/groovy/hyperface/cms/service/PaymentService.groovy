@@ -39,6 +39,7 @@ import org.springframework.stereotype.Service
 import org.springframework.web.server.ResponseStatusException
 
 import java.time.ZonedDateTime
+import java.time.temporal.ChronoUnit
 
 
 @Service
@@ -216,8 +217,8 @@ class PaymentService {
         customerTxnRepository.save(txn)
     }
 
-    public Integer getInterestRateForTxn(LedgerEntry ledgerEntry) {
-        CreditCardProgram program = ledgerEntry.customerTxn.card.cardProgram
+    public Integer getInterestRateForTxn(TransactionLedger ledgerEntry) {
+        CreditCardProgram program = ledgerEntry.transaction.card.cardProgram
         InterestCriteria matchedCriteria = program.scheduleOfCharges.interestCriteriaList?.find({
             return it.checkForMatch(ledgerEntry)
         })
@@ -237,6 +238,7 @@ class PaymentService {
         debitEntry.openingBalance = account.currentBalance
         debitEntry.closingBalance = account.currentBalance - txn.billingAmount
         debitEntry.transaction = txn
+        debitEntry.account = account
         transactionLedgerRepository.save(debitEntry)
         txn.txnStatus = TransactionStatus.APPROVED
         customerTransactionRepository.save(txn)
@@ -258,11 +260,33 @@ class PaymentService {
         creditEntry.openingBalance = account.currentBalance
         creditEntry.closingBalance = account.currentBalance + txn.billingAmount
         creditEntry.transaction = txn
+        creditEntry.account = account
         transactionLedgerRepository.save(creditEntry)
         txn.txnStatus = TransactionStatus.APPROVED
         customerTransactionRepository.save(txn)
         account.currentBalance = creditEntry.closingBalance
         creditAccountRepository.save(account)
         return creditEntry
+    }
+
+    public Double calculateInterest(CreditAccount account, TransactionLedger ledgerEntry) {
+        Double amount = ledgerEntry.transactionAmount
+        Double interestRateInPct = getInterestRateForTxn(ledgerEntry)/100
+        Integer noOfDays = ChronoUnit.DAYS.between(ledgerEntry.postingDate,account.currentBillingEndDate) + 1
+        Integer noOfDaysInBaseYear = 365
+        Double interestAmount = amount * (1/noOfDaysInBaseYear) * noOfDays * (interestRateInPct/100)
+
+        if (ledgerEntry.moneyMovementIndicator == MoneyMovementIndicator.CREDIT) {
+            interestAmount = -interestAmount
+        }
+        return interestAmount
+    }
+
+    public Double calculateInterestByDate(CreditAccount account,ZonedDateTime startDate, ZonedDateTime endDate, Double amount) {
+        Double interestRate = account.cards[0].cardProgram.annualizedPercentageRateInBps
+        Integer noOfDays = ChronoUnit.DAYS.between(startDate,endDate) + 1
+        Integer noOfDaysInBaseYear = 365
+        Double interestAmount = amount * (1/noOfDaysInBaseYear) * noOfDays * (interestRate/100)
+        return interestAmount
     }
 }
