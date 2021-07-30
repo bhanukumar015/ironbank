@@ -27,6 +27,7 @@ import hyperface.cms.repository.CardProgramRepository
 import hyperface.cms.repository.cardapplication.CardApplicationRepository
 import hyperface.cms.repository.cardapplication.FixedDepositDetailRepository
 import hyperface.cms.service.CardApplicationService
+import hyperface.cms.util.Response
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
@@ -74,16 +75,21 @@ class CardApplicationController {
             String errorMessage = "Invalid Program Id"
             return this.buildEligibilityResponse(null, EligibilityStatus.REJECTED, HttpStatus.BAD_REQUEST, errorMessage)
         }
+
+        // check for idempotency
         CardApplication existingCardApplication = cardApplicationRepository.findApplicationByMobileClientAndProgram(request.getClientId(),
                 request.getProgramId(), request.getMobileNumber())
         if (existingCardApplication != null) {
             log.info("Idempotent request received for Eligibility API. CardApplicationId: {}", existingCardApplication.getId())
-            return this.buildEligibilityResponse(existingCardApplication.getId(), EligibilityStatus.APPROVED, HttpStatus.OK, null)
+            return Response.returnSimpleJson(existingCardApplication.getCardApplicationFlowStatus().getEligibility().getResponse())
         }
 
         //TODO: Trigger eligibility module and if success, only then continue with below stub
-        CardApplication savedCardApplication = cardApplicationService.createCardApplication(request)
-        return this.buildEligibilityResponse(savedCardApplication.getId(), EligibilityStatus.APPROVED, HttpStatus.CREATED, null)
+
+        CardEligibilityResponse response = cardApplicationService.createCardApplication(request)
+        return ResponseEntity
+                .status(response.getStatus() == CardEligibilityResponse.EligibilityStatus.APPROVED ? HttpStatus.CREATED : HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(response)
     }
 
 
@@ -93,9 +99,9 @@ class CardApplicationController {
         if (cardApplicationOptional.isPresent()) {
             CardApplication cardApplication = cardApplicationOptional.get()
             //check for idempotency
-            if (cardApplication.getStatus() != CardApplication.ApplicationStatus.INITIATED) {
+            if (cardApplication.getCardApplicationFlowStatus().getApplicationCapture().getState()) {
                 log.info("Idempotent request received for Card Application Capture API. CardApplicationId: {}", cardApplication.getId())
-                return this.buildCardApplicationResponse(cardApplication.getId(), (CardApplicationResponse.CardApplicationStatus) cardApplication.getStatus().toString(), HttpStatus.OK, null, cardApplication.getHyperfaceCustId(), cardApplication.getKycType(), cardApplication.getBankCustId())
+                return Response.returnSimpleJson(cardApplication.getCardApplicationFlowStatus().getApplicationCapture().getResponse())
             }
             //verify pincode from residential address, which should match with the value from Eligibility API request
             if (cardApplication.getApplicantDetails().getResidentialAddress().getPincode() != request.getApplicantDetails().getResidentialAddress().pincode) {
@@ -125,11 +131,18 @@ class CardApplicationController {
             log.error("Error - API:[bankverification] - {}", errorMessage)
             return this.buildBankVerificationResponse(null, CustomerBankVerificationResponse.VerificationStatus.FAILED, HttpStatus.BAD_REQUEST, errorMessage, null, null)
         }
+        CardApplication cardApplication = cardApplicationOptional.get()
+
+        //check for idempotency
+        if (cardApplication.getCardApplicationFlowStatus().getBankVerification().getState()) {
+            log.info("Idempotent request received for Bank Verification API. CardApplicationId: {}", cardApplication.getId())
+            return Response.returnSimpleJson(cardApplication.getCardApplicationFlowStatus().getBankVerification().getResponse())
+        }
 
         // process verification request and return response
-        CustomerBankVerificationResponse response = cardApplicationService.verifyBank(request, cardApplicationOptional.get())
+        CustomerBankVerificationResponse response = cardApplicationService.verifyBank(request, cardApplication)
         return ResponseEntity
-                .status(response.getStatus() == CustomerBankVerificationResponse.VerificationStatus.SUCCESS ? HttpStatus.OK : HttpStatus.FAILED_DEPENDENCY)
+                .status(response.getStatus() == CustomerBankVerificationResponse.VerificationStatus.SUCCESS ? HttpStatus.CREATED : HttpStatus.FAILED_DEPENDENCY)
                 .body(response)
     }
 
@@ -143,11 +156,19 @@ class CardApplicationController {
             return this.buildFundTransferResponse(null, FixedDepositFundTransferResponse.TransferStatus.FAILED, HttpStatus.BAD_REQUEST, errorMessage, null, null, null)
         }
 
+        CardApplication cardApplication = cardApplicationOptional.get()
+
+        //check for idempotency
+        if (cardApplication.getCardApplicationFlowStatus().getFundTransfer().getState()) {
+            log.info("Idempotent request received for Fund Transfer API. CardApplicationId: {}", cardApplication.getId())
+            return Response.returnSimpleJson(cardApplication.getCardApplicationFlowStatus().getFundTransfer().getResponse())
+        }
+
         // process fund transfer and return response
-        FixedDepositFundTransferResponse response = cardApplicationService.processFundTransfer(request, cardApplicationOptional.get())
+        FixedDepositFundTransferResponse response = cardApplicationService.processFundTransfer(request, cardApplication)
 
         return ResponseEntity
-                .status(response.getStatus() == FixedDepositFundTransferResponse.TransferStatus.SUCCESS ? HttpStatus.OK : HttpStatus.FAILED_DEPENDENCY)
+                .status(response.getStatus() == FixedDepositFundTransferResponse.TransferStatus.SUCCESS ? HttpStatus.CREATED : HttpStatus.FAILED_DEPENDENCY)
                 .body(response)
     }
 
@@ -159,6 +180,14 @@ class CardApplicationController {
             String errorMessage = "Application with reference ID: ${request.getApplicationRefId()} not found."
             log.error("Error - API:[declaration] - {}", errorMessage)
             return this.buildNomineeAndFatcaResponse(null, FixedDepositFundTransferResponse.TransferStatus.FAILED, HttpStatus.BAD_REQUEST, errorMessage, null)
+        }
+
+        CardApplication cardApplication = cardApplicationOptional.get()
+
+        //check for idempotency
+        if (cardApplication.getCardApplicationFlowStatus().getFatcaDeclaration().getState()) {
+            log.info("Idempotent request received for FATCA declaration API. CardApplicationId: {}", cardApplication.getId())
+            return Response.returnSimpleJson(cardApplication.getCardApplicationFlowStatus().getFatcaDeclaration().getResponse())
         }
 
         //verify FD reference ID
@@ -179,9 +208,9 @@ class CardApplicationController {
         }
 
         // process nominee and fatca declaration and return response
-        NomineeInfoAndFatcaResponse response = cardApplicationService.processNomineeAndFatca(request, cardApplicationOptional.get(), fdDetail)
+        NomineeInfoAndFatcaResponse response = cardApplicationService.processNomineeAndFatca(request, cardApplication, fdDetail)
         return ResponseEntity
-                .status(response.getStatus() == NomineeInfoAndFatcaResponse.FatcaStatus.SUCCESS ? HttpStatus.OK : HttpStatus.FAILED_DEPENDENCY)
+                .status(response.getStatus() == NomineeInfoAndFatcaResponse.FatcaStatus.SUCCESS ? HttpStatus.CREATED : HttpStatus.FAILED_DEPENDENCY)
                 .body(response)
     }
 
@@ -195,6 +224,15 @@ class CardApplicationController {
             return this.buildFdBookingResponse(null, FdBookingResponse.FdBookingStatus.FAILED, HttpStatus.BAD_REQUEST, errorMessage, null, null)
         }
 
+        CardApplication cardApplication = cardApplicationOptional.get()
+
+        //check for idempotency
+        if (cardApplication.getCardApplicationFlowStatus().getFdBooking().getState()) {
+            log.info("Idempotent request received for FD Booking API. CardApplicationId: {}", cardApplication.getId())
+            return Response.returnSimpleJson(cardApplication.getCardApplicationFlowStatus().getFdBooking().getResponse())
+        }
+
+
         //verify FD reference ID
         Optional<FixedDepositDetail> fixedDepositDetailOptional = fixedDepositDetailRepository.findById(request.getFixedDepositRefId())
         FixedDepositDetail fdDetail = null
@@ -206,10 +244,11 @@ class CardApplicationController {
         }
 
         //verify credit limit based on card program
-        CardApplication cardApplication = cardApplicationOptional.get()
         CreditCardProgram creditCardProgram = cardProgramRepository.findById(cardApplication.getProgramId()).get()
         Double fdAmount = fdDetail.getFixedDepositAmount()
-        if (request.getCreditLimit() < (fdAmount * creditCardProgram.getMinCreditLineFdPercentage()) / 100.0
+        if (null == creditCardProgram.getMinCreditLineFdPercentage()
+                || creditCardProgram.getMaxCreditLineFdPercentage()
+                || request.getCreditLimit() < (fdAmount * creditCardProgram.getMinCreditLineFdPercentage()) / 100.0
                 || request.getCreditLimit() > (fdAmount * creditCardProgram.getMaxCreditLineFdPercentage()) / 100.0) {
             String errorMessage = "Credit Limit is not in the defined range."
             log.error("Error - API:[fixeddeposit] - {}", errorMessage)
@@ -219,7 +258,7 @@ class CardApplicationController {
         // process FD booking and return response
         FdBookingResponse response = cardApplicationService.processFd(request, cardApplication, fdDetail)
         return ResponseEntity
-                .status(response.getStatus() == FdBookingResponse.FdBookingStatus.SUCCESS ? HttpStatus.OK : HttpStatus.FAILED_DEPENDENCY)
+                .status(response.getStatus() == FdBookingResponse.FdBookingStatus.SUCCESS ? HttpStatus.CREATED : HttpStatus.FAILED_DEPENDENCY)
                 .body(response)
     }
 
@@ -359,7 +398,6 @@ class CardApplicationController {
                     clientRelationshipNumber = cardApplicationRequest.getBankDetails() == null ? null : cardApplicationRequest.getBankDetails().getClientRelationshipNumber()
                     ipAddress = cardApplicationRequest.getIpAddress()
                     clientPartnerRefId = cardApplicationRequest.getBankDetails() == null ? null : cardApplicationRequest.getBankDetails().getClientPartnerRefId()
-                    isKycComplete = Boolean.FALSE
                     isEtbNtbCheckComplete = Boolean.FALSE
                 }
     }

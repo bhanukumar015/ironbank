@@ -3,7 +3,7 @@ package hyperface.cms.commands.cardapplication
 import org.apache.commons.lang3.StringUtils
 import org.springframework.format.annotation.DateTimeFormat
 
-import javax.validation.constraints.AssertTrue
+import javax.validation.constraints.AssertFalse
 import javax.validation.constraints.NotBlank
 import javax.validation.constraints.NotNull
 import java.time.LocalDate
@@ -31,11 +31,11 @@ class NomineeInfoAndFatcaRequest {
     String motherMaidenName
 
 
-    @AssertTrue(message = "nomineeGuardian is required since nominee is a minor")
+    @AssertFalse(message = "nomineeGuardian is required since nominee is a minor")
     private boolean isGuardianNeeded() {
         int nomineeBirthYear = Integer.parseInt(nomineeDob.substring(0, 4))
 
-        return (LocalDate.now().getYear() - nomineeBirthYear) > 18
-                || StringUtils.isNotBlank(nomineeGuardian)
+        return (LocalDate.now().getYear() - nomineeBirthYear) < 18
+                && StringUtils.isBlank(nomineeGuardian)
     }
 }

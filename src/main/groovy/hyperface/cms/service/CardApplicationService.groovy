@@ -4,6 +4,7 @@ import groovy.util.logging.Slf4j
 import hyperface.cms.Constants
 import hyperface.cms.commands.cardapplication.CardApplicationResponse
 import hyperface.cms.commands.cardapplication.CardEligibilityRequest
+import hyperface.cms.commands.cardapplication.CardEligibilityResponse
 import hyperface.cms.commands.cardapplication.CustomerBankVerificationRequest
 import hyperface.cms.commands.cardapplication.CustomerBankVerificationResponse
 import hyperface.cms.commands.cardapplication.FdBookingRequest
@@ -18,8 +19,10 @@ import hyperface.cms.domains.Client
 import hyperface.cms.domains.CreditCardProgram
 import hyperface.cms.domains.Customer
 import hyperface.cms.domains.cardapplication.CardApplication
+import hyperface.cms.domains.cardapplication.CardApplicationFlowStatus
 import hyperface.cms.domains.cardapplication.DemographicDetail
 import hyperface.cms.domains.cardapplication.FixedDepositDetail
+import hyperface.cms.domains.cardapplication.StatePair
 import hyperface.cms.domains.kyc.KycOption
 import hyperface.cms.repository.CardProgramRepository
 import hyperface.cms.repository.ClientRepository
@@ -50,7 +53,7 @@ class CardApplicationService {
     @Autowired
     private FixedDepositDetailRepository fixedDepositDetailRepository
 
-    CardApplication createCardApplication(CardEligibilityRequest request) {
+    CardEligibilityResponse createCardApplication(CardEligibilityRequest request) {
         Address residentAddress = new Address()
                 .tap {
                     pincode = request.getCurrentResidencePincode()
@@ -72,16 +75,28 @@ class CardApplicationService {
                     programId = request.getProgramId()
                     applicantDetails = demographicDetail
                     isMobileNumberVerified = Boolean.TRUE
-                    isEligibilityCheckComplete = Boolean.TRUE
                     status = CardApplication.ApplicationStatus.INITIATED
                 }
+
         CardApplication savedCardApplication = cardApplicationRepository.save(cardApplication)
         log.info("Card Application created successfully for ${request.mobileNumber} under ${request.getProgramId()}")
-        return savedCardApplication
+        CardEligibilityResponse response = new CardEligibilityResponse()
+                .tap {
+                    status = CardEligibilityResponse.EligibilityStatus.APPROVED
+                    applicationRefId = savedCardApplication.getId()
+                }
+        savedCardApplication.tap {
+            cardApplicationFlowStatus = new CardApplicationFlowStatus()
+                    .tap {
+                        eligibility = new StatePair<>(Boolean.TRUE, response)
+                    }
+        }
+        cardApplicationRepository.save(savedCardApplication)
+        return response
     }
 
     CardApplicationResponse orchestrate(final CardApplication cardApplication) {
-        final CardApplicationResponse response = new CardApplicationResponse()
+        CardApplicationResponse response = new CardApplicationResponse()
         try {
             // Step 1: create customer
             DemographicDetail demographicDetail = cardApplication.getApplicantDetails()
@@ -124,10 +139,11 @@ class CardApplicationService {
                 status = CardApplication.ApplicationStatus.PENDING
                 hyperfaceCustId = savedCustomer.getId()
             }
-            cardApplicationRepository.save(cardApplication)
             response.setApplicationRefId(cardApplication.getId())
 
             response.setStatus(CardApplicationResponse.CardApplicationStatus.PENDING)
+            cardApplication.getCardApplicationFlowStatus().getApplicationCapture().set(Boolean.TRUE, response)
+            cardApplicationRepository.save(cardApplication)
 
         } catch (Exception e) {
             log.error("Exception occurred while orchestrating card application. Error: {}", e.getLocalizedMessage())
@@ -154,20 +170,23 @@ class CardApplicationService {
                     custSavingsBankAccNumber = request.getAccountNumber()
                     custSavingsBankIfsCode = request.getIfsCode()
                 }
-        cardApplicationRepository.save(cardApplication)
+
 
         //TODO: initiate penny drop transaction
 
         // return response
         log.info("API:[bankverification] - Bank verification complete for applicationID: {}", request.getApplicationRefId())
         CreditCardProgram cardProgram = cardProgramRepository.findById(cardApplication.getProgramId()).get()
-        return new CustomerBankVerificationResponse()
+        CustomerBankVerificationResponse response = new CustomerBankVerificationResponse()
                 .tap {
                     status = CustomerBankVerificationResponse.VerificationStatus.SUCCESS
                     applicationRefId = cardApplication.getId()
                     minCreditLineFdPercentage = cardProgram.getMinCreditLineFdPercentage()
                     maxCreditLineFdPercentage = cardProgram.getMaxCreditLineFdPercentage()
                 }
+        cardApplication.getCardApplicationFlowStatus().getBankVerification().set(Boolean.TRUE, response)
+        cardApplicationRepository.save(cardApplication)
+        return response
     }
 
     FixedDepositFundTransferResponse processFundTransfer(FixedDepositFundTransferRequest request, CardApplication application) {
@@ -198,7 +217,7 @@ class CardApplicationService {
 
         // return response
         log.info("API:[fundtransfer] - Fund transfer complete for applicationID: {}", request.getApplicationRefId())
-        return new FixedDepositFundTransferResponse()
+        FixedDepositFundTransferResponse response = new FixedDepositFundTransferResponse()
                 .tap {
                     status = FixedDepositFundTransferResponse.TransferStatus.SUCCESS
                     applicationRefId = application.getId()
@@ -206,6 +225,11 @@ class CardApplicationService {
                     amountTransferred = request.getFixedDepositAmount()
                     fixedDepositRefId = savedFdDetail.getId()
                 }
+
+        application.getCardApplicationFlowStatus().getFundTransfer().set(Boolean.TRUE, response)
+
+        cardApplicationRepository.save(application)
+        return response
     }
 
     NomineeInfoAndFatcaResponse processNomineeAndFatca(NomineeInfoAndFatcaRequest request, CardApplication cardApplication, FixedDepositDetail fdDetail) {
@@ -222,12 +246,17 @@ class CardApplicationService {
 
         // return response
         log.info("API:[FATCA declaration] - FATCA and Nominee declaration complete for applicationID: {}", request.getApplicationRefId())
-        return new NomineeInfoAndFatcaResponse()
+        NomineeInfoAndFatcaResponse response = new NomineeInfoAndFatcaResponse()
                 .tap {
                     status = NomineeInfoAndFatcaResponse.FatcaStatus.SUCCESS
                     applicationRefId = cardApplication.getId()
                     fixedDepositRefId = fdDetail.getId()
                 }
+
+        cardApplication.getCardApplicationFlowStatus().getFatcaDeclaration().set(Boolean.TRUE, response)
+
+        cardApplicationRepository.save(cardApplication)
+        return response
 
     }
 
@@ -255,7 +284,7 @@ class CardApplicationService {
 
         // return response
         log.info("API:[FDBooking] - FD booking complete for applicationID: {}", request.getApplicationRefId())
-        return new FdBookingResponse()
+        FdBookingResponse response = new FdBookingResponse()
                 .tap {
                     status = FdBookingResponse.FdBookingStatus.SUCCESS
                     applicationRefId = cardApplication.getId()
@@ -263,5 +292,10 @@ class CardApplicationService {
                     fixedDepositAccountNumber = fdAccountNumber
                     fixedDepositMaturityDate = fdMaturityDate.toString()
                 }
+
+        cardApplication.getCardApplicationFlowStatus().getFdBooking().set(Boolean.TRUE, response)
+
+        cardApplicationRepository.save(cardApplication)
+        return response
     }
 }

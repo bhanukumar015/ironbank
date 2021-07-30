@@ -21,10 +21,10 @@
             <maxMessageLength>128000</maxMessageLength>
         </syslogConfig>
     </appender>
-    <root level='DEBUG'>
+    <root level='ERROR'>
         <appender-ref ref='SYSLOG-TLS' />
     </root>
-    <root level='DEBUG'>
+    <root level='INFO'>
         <appender-ref ref='STDOUT' />
     </root>
 </configuration>
