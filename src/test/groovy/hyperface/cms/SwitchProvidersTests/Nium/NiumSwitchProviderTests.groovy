@@ -27,7 +27,6 @@ import org.mockito.Mock
 import org.mockito.Mockito
 import org.springframework.http.HttpStatus
 import org.junit.jupiter.api.Test
-import java.security.InvalidParameterException
 
 import static org.junit.jupiter.api.Assertions.*
 import org.springframework.beans.factory.annotation.Autowired
@@ -319,7 +318,7 @@ class NiumSwitchProviderTests {
         def response = cardService.setCardLimits(mockObject.getTestCardLimitRequest())
         assertTrue(response.isRight())
         Card card = response.right().get()
-        assert card.cardControl.perTransactionLimit.value == 100.00
+        assert card.cardControl.perTransactionLimit.limit == 100.00
         assert card.cardControl.monthlyTransactionLimit.isEnabled
         assert card.cardControl.dailyTransactionLimit.additionalMarginPercentage == 5.00
     }

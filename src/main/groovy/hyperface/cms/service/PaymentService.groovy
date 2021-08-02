@@ -1,24 +1,21 @@
 package hyperface.cms.service
 
-import hyperface.cms.Constants
 import hyperface.cms.appdata.TxnNotEligible
 import hyperface.cms.commands.AuthSettlementRequest
 import hyperface.cms.commands.AuthorizationRequest
 import hyperface.cms.commands.CustomerTransactionRequest
 import hyperface.cms.commands.CustomerTransactionResponse
 import hyperface.cms.commands.GenericErrorResponse
-import hyperface.cms.commands.SettlementRequest
 import hyperface.cms.domains.Account
-import hyperface.cms.domains.Card
 import hyperface.cms.domains.CreditAccount
 import hyperface.cms.domains.CreditCardProgram
 import hyperface.cms.domains.CustomerTransaction
 import hyperface.cms.domains.CustomerTxn
 import hyperface.cms.domains.batch.CurrencyConversion
+import hyperface.cms.domains.fees.JoiningFee
 import hyperface.cms.domains.interest.InterestCriteria
 import hyperface.cms.domains.ledger.LedgerEntry
 import hyperface.cms.domains.ledger.TransactionLedger
-import hyperface.cms.model.enums.AuthorizationType
 import hyperface.cms.model.enums.LedgerTransactionType
 import hyperface.cms.model.enums.MoneyMovementIndicator
 import hyperface.cms.model.enums.SovereigntyIndicator
@@ -35,9 +32,7 @@ import io.vavr.control.Either
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
-import org.springframework.web.server.ResponseStatusException
 
 import java.time.ZonedDateTime
 import java.time.temporal.ChronoUnit
@@ -69,6 +64,9 @@ class PaymentService {
     @Autowired
     private TransactionLedgerRepository transactionLedgerRepository
 
+    @Autowired
+    private FeeService feeService
+
     Either<TxnNotEligible, Boolean> checkEligibility(CustomerTransactionRequest req) {
         if(req.card.hotlisted) {
             return Either.left(new TxnNotEligible(reason: "Card is blocked"))
@@ -76,7 +74,7 @@ class PaymentService {
         else if (req.card.isLocked) {
             return Either.left(new TxnNotEligible(reason: "Card is locked"))
         }
-        else if(req.transactionCurrency != req.card.creditAccount.defaultCurrency && !req.card.enableOverseasTransactions) {
+        else if(req.transactionCurrency != req.card.creditAccount.defaultCurrency && !req.card.cardControl.enableOverseasTransactions) {
             return Either.left(new TxnNotEligible(reason: "International transactions are disabled"))
         }
         return Either.right(true)
@@ -106,7 +104,8 @@ class PaymentService {
             txn.billingAmount = req.transactionAmount * currencyConversion.conversionRate
             txn.billingCurrency = account.defaultCurrency
         }
-        if (txn.billingAmount > account.availableCreditLimit) {
+        Double creditBuffer = (req.card.cardProgram.overLimitAuthPct * account.approvedCreditLimit) / 100
+        if (txn.billingAmount > account.availableCreditLimit + creditBuffer) {
             return Either.left(new GenericErrorResponse(reason:  "Insufficient balance"))
         }
         if (txn.transactionType == TransactionType.SETTLEMENT_DEBIT_CASH) {
@@ -138,11 +137,17 @@ class PaymentService {
                 break
 
             case TransactionType.AUTHORIZE:
+                if(txn.billingAmount > account.availableCreditLimit){
+                    feeService.createOverlimitFeeEntry(txn, Boolean.TRUE)
+                }
                 account.availableCreditLimit -= txn.billingAmount
                 account.availableCashWithdrawalLimit = Math.min(account.availableCreditLimit,account.availableCashWithdrawalLimit)
                 break
 
             case TransactionType.AUTHORIZATION_REVERSAL:
+                if(account.availableCreditLimit < 0){
+                    feeService.createOverlimitFeeEntry(txn, Boolean.FALSE)
+                }
                 account.availableCreditLimit += txn.billingAmount
                 account.availableCashWithdrawalLimit = Math.min(account.availableCreditLimit,account.approvedCashWithdrawalLimit)
                 break
@@ -166,7 +171,7 @@ class PaymentService {
         return txnResponse
     }
 
-    public CustomerTxn processAuthorization(AuthorizationRequest req) {
+    CustomerTxn processAuthorization(AuthorizationRequest req) {
         CustomerTxn txn = createCustomerTxn(req)
         // reduce this balance from the available credit limit
         // same currency
@@ -179,7 +184,7 @@ class PaymentService {
     }
 
     // think about merging this with processAuthorization
-    public CustomerTxn processReversalRequest(AuthorizationRequest req) {
+    CustomerTxn processReversalRequest(AuthorizationRequest req) {
         CustomerTxn txn = createCustomerTxn(req)
         req.card.creditAccount.availableCreditLimit += txn.billingAmount
         txn.availableBalanceAfterTxn = req.card.creditAccount.availableCreditLimit
@@ -203,16 +208,29 @@ class PaymentService {
         double settlementBillingAmount = req.settlementAmount
         if (req.settlementCurrency != account.defaultCurrency) {
             settlementBillingAmount = getConvertedAmount(req.settlementCurrency, account.defaultCurrency, req.settlementAmount)
+            feeService.createMarkupFeeEntry(txn, settlementBillingAmount, Boolean.TRUE)
         }
-        TransactionLedger ledgerEntry = createDebitEntry(txn, req.settlementAmount)
+        TransactionLedger ledgerEntry = createDebitEntry(txn, settlementBillingAmount)
         account.availableCreditLimit -= (settlementBillingAmount - txn.billingAmount)
+
+        if(txn.transactionType = TransactionType.SETTLEMENT_DEBIT_CASH){
+            feeService.createCashWithdrawalFeeEntry(txn, settlementBillingAmount, Boolean.TRUE)
+        }
+
+        if(!req.card.isFirstPurchaseDone
+                && req.card.cardProgram.scheduleOfCharges.joiningFee.applicationTrigger == JoiningFee.ApplicationTrigger.AFTER_FIRST_PURCHASE_TXN){
+            feeService.createJoiningFeeEntry(txn)
+            req.card.isFirstPurchaseDone = true
+            cardRepository.save(req.card)
+        }
+
         if (settlementBillingAmount == txn.billingAmount) {
             txn.txnStatus = TransactionStatus.SETTLED
         } else {
             txn.txnStatus = TransactionStatus.PARTIALLY_SETTLED
         }
         creditAccountRepository.save(account)
-        customerTxnRepository.save(txn)
+        customerTransactionRepository.save(txn)
         return Either.right(txn)
     }
 
@@ -224,22 +242,37 @@ class PaymentService {
             return Either.left(new GenericErrorResponse(reason: "Invalid transactionId"))
         }
         CustomerTransaction txn = customerTransaction.get()
+
         if (txn.txnStatus != TransactionStatus.APPROVED) {
             return Either.left(new GenericErrorResponse(reason: "This transaction has already been settled"))
         }
+
         double settlementBillingAmount = req.settlementAmount
         if (req.settlementCurrency != account.defaultCurrency) {
             settlementBillingAmount = getConvertedAmount(req.settlementCurrency, account.defaultCurrency, req.settlementAmount)
+            feeService.createMarkupFeeEntry(txn, settlementBillingAmount, Boolean.FALSE)
         }
-        TransactionLedger ledgerEntry = createCreditEntry(txn, req.settlementAmount)
+        TransactionLedger ledgerEntry = createCreditEntry(txn, settlementBillingAmount)
         account.availableCreditLimit += (settlementBillingAmount - txn.billingAmount)
+
+        if(txn.transactionType = TransactionType.SETTLEMENT_CREDIT_CASH){
+            feeService.createCashWithdrawalFeeEntry(txn, settlementBillingAmount, Boolean.FALSE)
+        }
+
+        if(!req.card.isFirstRepaymentDone && txn.transactionType == TransactionType.REPAYMENT
+            && req.card.cardProgram.scheduleOfCharges.joiningFee.applicationTrigger == JoiningFee.ApplicationTrigger.AFTER_FIRST_REPAYMENT){
+            feeService.createJoiningFeeEntry(txn)
+            req.card.isFirstRepaymentDone = true
+            cardRepository.save(req.card)
+        }
+
         if (settlementBillingAmount == txn.billingAmount) {
             txn.txnStatus = TransactionStatus.SETTLED
         } else {
             txn.txnStatus = TransactionStatus.PARTIALLY_SETTLED
         }
         creditAccountRepository.save(account)
-        customerTxnRepository.save(txn)
+        customerTransactionRepository.save(txn)
         return Either.right(txn)
     }
 

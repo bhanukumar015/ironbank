@@ -10,18 +10,24 @@ import hyperface.cms.domains.CreditCardProgram
 import hyperface.cms.domains.CreditCardScheduleOfCharges
 import hyperface.cms.domains.CustomerTransaction
 import hyperface.cms.domains.CustomerTxn
+import hyperface.cms.domains.SystemTransaction
 import hyperface.cms.domains.interest.Condition
 import hyperface.cms.domains.interest.InterestCriteria
 import hyperface.cms.domains.ledger.LedgerEntry
-import hyperface.cms.repository.CardProgramRepository
+import hyperface.cms.domains.ledger.TransactionLedger
+import hyperface.cms.model.enums.FeeType
+import hyperface.cms.model.enums.LedgerTransactionType
 import hyperface.cms.repository.CardRepository
 import hyperface.cms.repository.CreditAccountRepository
-
+import hyperface.cms.repository.SystemTransactionRepository
 import hyperface.cms.repository.TransactionLedgerRepository
+import hyperface.cms.service.FeeService
 import hyperface.cms.service.PaymentService
 import io.vavr.control.Either
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Test
+import org.mockito.Mock
+import org.mockito.Mockito
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 
@@ -37,6 +43,18 @@ class PaymentServiceTests {
 
 	@Autowired
 	CardRepository cardRepository
+
+	@Autowired
+	FeeService feeService
+
+	@Mock
+	CreditAccountRepository accountRepository
+
+	@Mock
+	SystemTransactionRepository systemTransactionRepository
+
+	@Mock
+	TransactionLedgerRepository transactionLedgerRepository
 
 	Integer annualizedPercentageRateInBps = 4500
 	int feeApr = 4000
@@ -122,9 +140,111 @@ class PaymentServiceTests {
 		CustomerTransactionRequest req = mockObjects.getTestCustomerInternationalTransactionResquest()
 		Card card = cardRepository.findById(req.cardId).get()
 		req.card = card
-		Either<TxnNotEligible,Boolean> result = paymentService.checkEligibility(req)
-		Either<GenericErrorResponse,CustomerTransaction> txnResult = paymentService.createCustomerTxn(req)
+		Either<TxnNotEligible, Boolean> result = paymentService.checkEligibility(req)
+		Either<GenericErrorResponse, CustomerTransaction> txnResult = paymentService.createCustomerTxn(req)
 		Assertions.assertTrue(result.right().get())
 		Assertions.assertTrue(txnResult.right().get().billingAmount >= 1170)
+	}
+
+	@Test
+	void testJoiningFeeEntry(){
+		feeService.creditAccountRepository = accountRepository
+		feeService.systemTransactionRepository = systemTransactionRepository
+		feeService.transactionLedgerRepository = transactionLedgerRepository
+		Mockito.when(accountRepository.save(Mockito.any())).thenReturn(null)
+		Mockito.when(systemTransactionRepository.save(Mockito.any())).thenReturn(null)
+		Mockito.when(transactionLedgerRepository.save(Mockito.any())).thenReturn(null)
+		MockObjects mockObjects = new MockObjects()
+		CustomerTransaction txn = mockObjects.getTestCustomerTransaction()
+		TransactionLedger entry = feeService.createJoiningFeeEntry(txn)
+		assert entry.transactionType == LedgerTransactionType.FEE
+		assert entry.transactionAmount == 100
+		SystemTransaction sysTxn = entry.transaction as SystemTransaction
+		assert sysTxn.feeType == FeeType.JOINING
+	}
+
+	@Test
+	void testCashAdvanceFeeEntry(){
+		feeService.creditAccountRepository = accountRepository
+		feeService.systemTransactionRepository = systemTransactionRepository
+		feeService.transactionLedgerRepository = transactionLedgerRepository
+		Mockito.when(accountRepository.save(Mockito.any())).thenReturn(null)
+		Mockito.when(systemTransactionRepository.save(Mockito.any())).thenReturn(null)
+		Mockito.when(transactionLedgerRepository.save(Mockito.any())).thenReturn(null)
+		MockObjects mockObjects = new MockObjects()
+		CustomerTransaction txn = mockObjects.getTestCustomerTransaction()
+		TransactionLedger entry = feeService.createCashWithdrawalFeeEntry(txn, 10000, Boolean.FALSE)
+		assert entry.transactionType == LedgerTransactionType.FEE_REVERSAL
+		assert entry.transactionAmount == 300
+		SystemTransaction sysTxn = entry.transaction as SystemTransaction
+		assert sysTxn.feeType == FeeType.CASH_ADVANCE_FEE
+	}
+
+	@Test
+	void testMarkupFeeEntry(){
+		feeService.creditAccountRepository = accountRepository
+		feeService.systemTransactionRepository = systemTransactionRepository
+		feeService.transactionLedgerRepository = transactionLedgerRepository
+		Mockito.when(accountRepository.save(Mockito.any())).thenReturn(null)
+		Mockito.when(systemTransactionRepository.save(Mockito.any())).thenReturn(null)
+		Mockito.when(transactionLedgerRepository.save(Mockito.any())).thenReturn(null)
+		MockObjects mockObjects = new MockObjects()
+		CustomerTransaction txn = mockObjects.getTestCustomerTransaction()
+		TransactionLedger entry = feeService.createMarkupFeeEntry(txn, 10000, Boolean.TRUE)
+		assert entry.transactionType == LedgerTransactionType.FEE
+		assert entry.transactionAmount == 200
+		SystemTransaction sysTxn = entry.transaction as SystemTransaction
+		assert sysTxn.feeType == FeeType.FOREX_MARKUP
+	}
+
+	@Test
+	void testAddOnCardFeeEntry(){
+		feeService.creditAccountRepository = accountRepository
+		feeService.systemTransactionRepository = systemTransactionRepository
+		feeService.transactionLedgerRepository = transactionLedgerRepository
+		Mockito.when(accountRepository.save(Mockito.any())).thenReturn(null)
+		Mockito.when(systemTransactionRepository.save(Mockito.any())).thenReturn(null)
+		Mockito.when(transactionLedgerRepository.save(Mockito.any())).thenReturn(null)
+		MockObjects mockObjects = new MockObjects()
+		TransactionLedger entry = feeService.createAddOnCardFeeEntry(mockObjects.getTestCard())
+		assert entry.transactionType == LedgerTransactionType.FEE
+		assert entry.transactionAmount == 100
+		SystemTransaction sysTxn = entry.transaction as SystemTransaction
+		assert sysTxn.feeType == FeeType.ADD_ONCARD
+	}
+
+	@Test
+	void testRewardsRedemptionFeeEntry(){
+		feeService.creditAccountRepository = accountRepository
+		feeService.systemTransactionRepository = systemTransactionRepository
+		feeService.transactionLedgerRepository = transactionLedgerRepository
+		Mockito.when(accountRepository.save(Mockito.any())).thenReturn(null)
+		Mockito.when(systemTransactionRepository.save(Mockito.any())).thenReturn(null)
+		Mockito.when(transactionLedgerRepository.save(Mockito.any())).thenReturn(null)
+		MockObjects mockObjects = new MockObjects()
+		Card card = mockObjects.getTestCard()
+		card.creditAccount.cards = Arrays.asList(card)
+		TransactionLedger entry = feeService.createRewardRedemptionFeeEntry(card.creditAccount)
+		assert entry.transactionType == LedgerTransactionType.FEE
+		assert entry.transactionAmount == 50
+		SystemTransaction sysTxn = entry.transaction as SystemTransaction
+		assert sysTxn.feeType == FeeType.REWARDS_REDEMPTION
+	}
+
+	@Test
+	void testOverlimitFeeEntry(){
+		feeService.creditAccountRepository = accountRepository
+		feeService.systemTransactionRepository = systemTransactionRepository
+		feeService.transactionLedgerRepository = transactionLedgerRepository
+		Mockito.when(accountRepository.save(Mockito.any())).thenReturn(null)
+		Mockito.when(systemTransactionRepository.save(Mockito.any())).thenReturn(null)
+		Mockito.when(transactionLedgerRepository.save(Mockito.any())).thenReturn(null)
+		MockObjects mockObjects = new MockObjects()
+		CustomerTransaction txn = mockObjects.getTestCustomerTransaction()
+		TransactionLedger entry = feeService.createOverlimitFeeEntry(txn, Boolean.TRUE)
+		assert entry.transactionType == LedgerTransactionType.FEE
+		assert entry.transactionAmount == 150
+		SystemTransaction sysTxn = entry.transaction as SystemTransaction
+		assert sysTxn.feeType == FeeType.OVERLIMIT
 	}
 }

@@ -10,8 +10,14 @@ import hyperface.cms.domains.Card
 import hyperface.cms.domains.CardControl
 import hyperface.cms.domains.CreditAccount
 import hyperface.cms.domains.CreditCardProgram
+import hyperface.cms.domains.CreditCardScheduleOfCharges
 import hyperface.cms.domains.Customer
+import hyperface.cms.domains.CustomerTransaction
 import hyperface.cms.domains.TransactionLimit
+import hyperface.cms.domains.fees.FlatFeeStrategy
+import hyperface.cms.domains.fees.HigherOfPctOrMinValueStrategy
+import hyperface.cms.domains.fees.JoiningFee
+import hyperface.cms.domains.fees.PercentFeeStrategy
 import kong.unirest.Cookies
 import kong.unirest.Headers
 import kong.unirest.HttpResponse
@@ -26,7 +32,7 @@ class MockObjects {
 
     private static Random random = new Random(System.currentTimeMillis())
 
-    public Customer getTestCustomer(){
+    Customer getTestCustomer(){
         Customer customer = new Customer()
         customer.firstName = "John"
         customer.middleName = ""
@@ -49,7 +55,7 @@ class MockObjects {
         return customer
     }
 
-    public CreateCardRequest getTestCreateCardRequest(){
+    CreateCardRequest getTestCreateCardRequest(){
         CreateCardRequest cardRequest = new CreateCardRequest()
         cardRequest.isAddOn = false
         cardRequest.cardProgramId = '1'
@@ -59,7 +65,7 @@ class MockObjects {
         return cardRequest
     }
 
-    public CreditCardProgram getTestCreditCardProgram(){
+    CreditCardProgram getTestCreditCardProgram(){
         CreditCardProgram creditCardProgram = new CreditCardProgram().tap {
             annualizedPercentageRateInBps = 36
             cardLogoId = '178'
@@ -77,21 +83,37 @@ class MockObjects {
             monthlyAccountLimit = 1000
             lifetimeAccountCount = 0
             lifetimeAccountLimit = 10000
+            scheduleOfCharges = this.getTestScheduleOfCharges()
         }
         return creditCardProgram
     }
 
-    public CreditAccount getTestCreditAccount(){
+    CreditCardScheduleOfCharges getTestScheduleOfCharges(){
+        return new CreditCardScheduleOfCharges().tap{
+            joiningFee = new JoiningFee().tap{
+                applicationTrigger = JoiningFee.ApplicationTrigger.AFTER_FIRST_PURCHASE_TXN
+                feeStrategy = new FlatFeeStrategy(valueTobeCharged: 100)
+            }
+            forexFeeStrategy = new PercentFeeStrategy(percentageToBeCharged: 2)
+            cashAdvanceFeeStrategy = new HigherOfPctOrMinValueStrategy(minTobeCharged: 100, percentage: 3)
+            addonCardFeeStrategy = new FlatFeeStrategy(valueTobeCharged: 100)
+            rewardRedemptionFeeStrategy = new FlatFeeStrategy(valueTobeCharged: 50)
+            overlimitFeeStrategy = new HigherOfPctOrMinValueStrategy(minTobeCharged: 100, percentage: 3)
+        }
+    }
+
+    CreditAccount getTestCreditAccount(){
         CreditAccount mockCreditAccount = new CreditAccount()
         mockCreditAccount.id = '1'
         mockCreditAccount.defaultCurrency = Constants.Currency.HKD
+        mockCreditAccount.currentBalance = 10000
         mockCreditAccount.approvedCreditLimit = 10000
         mockCreditAccount.availableCreditLimit = 10000
         mockCreditAccount.customer = this.getTestCustomer()
         return mockCreditAccount
     }
 
-    public Card getTestCard(){
+    Card getTestCard(){
         Card card = new Card().tap {
             id = UUID.randomUUID().toString()
             cardExpiryMonth = 10
@@ -113,25 +135,38 @@ class MockObjects {
                 enableCashWithdrawal = false
                 enableMagStripe = false
                 dailyTransactionLimit = new TransactionLimit().tap{
-                    value = 100
+                    limit = 100.00
+                    currentValue = 0.00
+                    additionalMarginPercentage = 5.00
+                    isEnabled = true
                 }
                 dailyCashWithdrawalLimit = new TransactionLimit().tap{
-                    value = 10
+                    limit = 10
+                    currentValue = 0.00
+                    additionalMarginPercentage = 5.00
+                    isEnabled = true
                 }
                 perTransactionLimit = new TransactionLimit().tap{
-                    value = 10
+                    limit = 10
+                    currentValue = 0.00
+                    additionalMarginPercentage = 5.00
+                    isEnabled = true
                 }
                 monthlyTransactionLimit = new TransactionLimit().tap{
-                    value = 1000
+                    limit = 1000
+                    currentValue = 0.00
+                    additionalMarginPercentage = 5.00
+                    isEnabled = true
                 }
             }
             cardControl = mockCardControl
+            cardProgram = this.getTestCreditCardProgram()
             creditAccount = this.getTestCreditAccount()
         }
         return card
     }
 
-    public CardLimitsRequest getTestCardLimitRequest(){
+    CardLimitsRequest getTestCardLimitRequest(){
         return new CardLimitsRequest().tap {
             cardId = UUID.randomUUID().toString()
             cardLimits = new LinkedList<CardLimitsRequest.CardLimit>()
@@ -166,20 +201,20 @@ class MockObjects {
         return (Math.abs(random.nextInt() % 9000000000) + 1000000).toString()
     }
 
-    public String mockCreateCustomerResponse(){
+    String mockCreateCustomerResponse(){
         JSONObject response = new JSONObject()
                 .put('customerHashId', UUID.randomUUID().toString())
                 .put('walletHashId', UUID.randomUUID().toString())
         return response.toString()
     }
 
-    public String mockCreateCardResponse(){
+    String mockCreateCardResponse(){
         JSONObject response = new JSONObject()
                 .put('cardHashId', UUID.randomUUID().toString())
                 .put('maskedCardNumber', '1234-56xx-xxxx-3456')
         return response
     }
-    public HttpResponse<JsonNode> mockCreateCustomerResponseAsync(){
+    HttpResponse<JsonNode> mockCreateCustomerResponseAsync(){
         return new HttpResponse(){
             @Override
             int getStatus() {
@@ -249,7 +284,7 @@ class MockObjects {
         }
     }
 
-    public HttpResponse<JsonNode> mockAddCardResponseAsync(){
+    HttpResponse<JsonNode> mockAddCardResponseAsync(){
         return new HttpResponse(){
             @Override
             int getStatus() {
@@ -319,7 +354,7 @@ class MockObjects {
         }
     }
 
-    public CardChannelControlsRequest getTestCardControlsRequest(){
+    CardChannelControlsRequest getTestCardControlsRequest(){
         return new CardChannelControlsRequest().tap{
             cardId = UUID.randomUUID().toString()
             enableMagStripe = false
@@ -331,26 +366,26 @@ class MockObjects {
         }
     }
 
-    public String mockActivateCardResponse(){
+    String mockActivateCardResponse(){
         JSONObject response = new JSONObject()
                 .put('status', 'Active')
         return response.toString()
     }
 
-    public String mockBlockCardResponse(){
+    String mockBlockCardResponse(){
         JSONObject response = new JSONObject()
                 .put('status', 'Success')
         return response.toString()
     }
 
-    public String mockActivateCardResponseFailure(){
+    String mockActivateCardResponseFailure(){
         JSONObject response = new JSONObject()
                 .put('status', 'BAD_REQUEST')
                 .put('errors', ["Card already activated!"])
         return response.toString()
     }
 
-    public CustomerTransactionRequest getTestCustomerDomesticTransactionResquest() {
+    CustomerTransactionRequest getTestCustomerDomesticTransactionResquest() {
         return new CustomerTransactionRequest()
             .tap {
                 cardId = "card_j3rMwLlbL5uAftf2"
@@ -363,7 +398,7 @@ class MockObjects {
             }
     }
 
-    public CustomerTransactionRequest getTestCustomerInternationalTransactionResquest() {
+    CustomerTransactionRequest getTestCustomerInternationalTransactionResquest() {
         return new CustomerTransactionRequest()
             .tap {
                 cardId = "card_j3rMwLlbL5uAftf2"
@@ -374,5 +409,13 @@ class MockObjects {
                 merchantTerminalId = "123"
                 transactionType = "SETTLEMENT_DEBIT"
             }
+    }
+
+    CustomerTransaction getTestCustomerTransaction(){
+        return new CustomerTransaction().tap{
+            card = this.getTestCard()
+            id = 1
+            billingAmount = 15000
+        }
     }
 }
