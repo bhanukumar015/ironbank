@@ -1,11 +1,13 @@
 package hyperface.cms.commands.cardapplication
 
 import org.apache.commons.lang3.StringUtils
-import org.springframework.format.annotation.DateTimeFormat
 
 import javax.validation.constraints.AssertFalse
+import javax.validation.constraints.AssertTrue
 import javax.validation.constraints.NotBlank
 import javax.validation.constraints.NotNull
+import java.text.ParseException
+import java.text.SimpleDateFormat
 import java.time.LocalDate
 
 class NomineeInfoAndFatcaRequest {
@@ -18,8 +20,7 @@ class NomineeInfoAndFatcaRequest {
     @NotBlank(message = "nomineeName must not be null/empty")
     String nomineeName
 
-    @NotBlank(message = "nomineeDob must not be null/empty")
-    @DateTimeFormat(pattern = "yyyyMMdd")
+    @NotBlank(message = "nomineeDob must not be null/empty. It must be in the format 'yyyyMMdd'")
     String nomineeDob
 
     String nomineeGuardian
@@ -30,6 +31,20 @@ class NomineeInfoAndFatcaRequest {
     @NotBlank(message = "motherMaidenName must not be null/empty")
     String motherMaidenName
 
+
+    @AssertTrue(message = "nomineeDob must be in the format 'yyyyMMdd'")
+    private boolean isNomineeDobIncorrectFormat() {
+
+        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyyMMdd");
+        dateFormat.setLenient(false);
+        try {
+            dateFormat.parse(nomineeDob)
+            return true
+        }
+        catch (ParseException e) {
+            return false;
+        }
+    }
 
     @AssertFalse(message = "nomineeGuardian is required since nominee is a minor")
     private boolean isGuardianNeeded() {
