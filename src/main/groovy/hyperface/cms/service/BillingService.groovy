@@ -164,11 +164,12 @@ class BillingService {
                     closingBalance = lastStatement.closingBalance
                 }
                 Double totalAmountDue = Math.abs(openingBalance) + totalDebits - totalCredits
-                Double minAmountDue = totalAmountDue * 0.05 + transactionLedgerRepository.getSumByCreditAccountAndTxnTypeInRange(account,LedgerTransactionType.TAX,account.currentBillingStartDate,account.currentBillingEndDate) ?: 0.0
+                Double totalTaxAmount = transactionLedgerRepository.getSumByCreditAccountAndTxnTypeInRange(account,LedgerTransactionType.TAX,account.currentBillingStartDate,account.currentBillingEndDate) ?: 0.0
+                Double minAmountDue = totalAmountDue * 0.05 + totalTaxAmount
                 CardStatement cardStatement = new CardStatement()
                 cardStatement.totalAmountDue = totalAmountDue
-                cardStatement.minAmountDue = Math.max(minAmountDue, account.cards[0].cardProgram.minimumAmountDueFloor)
-                cardStatement.dueDate = ZonedDateTime.now().plusDays(account.cards[0].cardProgram.gracePeriodInDays)
+                cardStatement.minAmountDue = Math.max(minAmountDue, account.cards.get(0).cardProgram.minimumAmountDueFloor)
+                cardStatement.dueDate = ZonedDateTime.now().plusDays(account.cards.get(0).cardProgram.gracePeriodInDays)
                 cardStatement.totalCredits = totalDebits
                 cardStatement.totalDebits = totalCredits
                 cardStatement.openingBalance = openingBalance
