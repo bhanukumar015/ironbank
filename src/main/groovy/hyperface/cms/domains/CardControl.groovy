@@ -1,6 +1,6 @@
 package hyperface.cms.domains
 
-import hyperface.cms.domains.converters.SimpleJsonConverter
+import hyperface.cms.domains.converters.TransactionLimitConverter
 import org.hibernate.annotations.GenericGenerator
 
 import javax.persistence.Convert
@@ -23,20 +23,21 @@ class CardControl {
     Boolean enableCashWithdrawal = false
     Boolean enableMagStripe = false
 
-    @Convert(converter = SimpleJsonConverter.class)
+    @Convert(converter = TransactionLimitConverter.class)
     TransactionLimit dailyCashWithdrawalLimit
-    @Convert(converter = SimpleJsonConverter.class)
+    @Convert(converter = TransactionLimitConverter.class)
     TransactionLimit dailyTransactionLimit
-    @Convert(converter = SimpleJsonConverter.class)
+    @Convert(converter = TransactionLimitConverter.class)
     TransactionLimit perTransactionLimit
-    @Convert(converter = SimpleJsonConverter.class)
+    @Convert(converter = TransactionLimitConverter.class)
     TransactionLimit monthlyTransactionLimit
-    @Convert(converter = SimpleJsonConverter.class)
+    @Convert(converter = TransactionLimitConverter.class)
     TransactionLimit lifetimeTransactionLimit
 }
 
 public class TransactionLimit{
-    Double value
+    Double limit
+    Double currentValue
     Double additionalMarginPercentage
     Boolean isEnabled
 }
