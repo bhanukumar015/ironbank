@@ -16,6 +16,7 @@ import hyperface.cms.model.enums.RepaymentIndicator
 import hyperface.cms.repository.CardStatementRepository
 import hyperface.cms.repository.CreditAccountRepository
 import hyperface.cms.repository.TransactionLedgerRepository
+import io.vavr.collection.List
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Service
 
@@ -57,6 +58,7 @@ class BillingService {
         if (account.lastStatementId) {
             lastStatement = cardStatementRepository.findById(account.lastStatementId).get()
         }
+        CreditCardProgram cardProgram = account.cards.get(0).cardProgram
         switch (account.billingStatus) {
             case BillingStatus.BILLING_INITIATED:
                 changeRepaymentIndicator(account)
@@ -168,8 +170,8 @@ class BillingService {
                 Double minAmountDue = totalAmountDue * 0.05 + totalTaxAmount
                 CardStatement cardStatement = new CardStatement()
                 cardStatement.totalAmountDue = totalAmountDue
-                cardStatement.minAmountDue = Math.max(minAmountDue, account.cards.get(0).cardProgram.minimumAmountDueFloor)
-                cardStatement.dueDate = ZonedDateTime.now().plusDays(account.cards.get(0).cardProgram.gracePeriodInDays)
+                cardStatement.minAmountDue = Math.max(minAmountDue, cardProgram.minimumAmountDueFloor)
+                cardStatement.dueDate = ZonedDateTime.now().plusDays(cardProgram.gracePeriodInDays)
                 cardStatement.totalCredits = totalDebits
                 cardStatement.totalDebits = totalCredits
                 cardStatement.openingBalance = openingBalance
@@ -179,8 +181,8 @@ class BillingService {
                 cardStatement.unpaidResidualBalance = closingBalance
                 cardStatement.billedInterest = billedInterest
                 cardStatement.waivedInterest = waivedInterest
-                cardStatement.netTaxOnInterest = netFinanceCharges * 0.18
-                cardStatement.netTaxOnFees = netFeeCharges * 0.18
+                cardStatement.netTaxOnInterest = netFinanceCharges * Constants.TAX_RATE_IN_PCT / 100
+                cardStatement.netTaxOnFees = netFeeCharges * Constants.TAX_RATE_IN_PCT / 100
                 cardStatement.netFinanceCharges = netFinanceCharges
                 cardStatement.netFeeCharges = netFeeCharges
                 cardStatement.netRepayments = netRepayments

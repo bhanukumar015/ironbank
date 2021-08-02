@@ -125,4 +125,6 @@ class Constants {
 
     /* URL Constants */
     public static final String PATH_CLIENT_BASE_URL = "/client"
+
+    public static final Double TAX_RATE_IN_PCT = 18
 }
