@@ -1,15 +1,22 @@
 package hyperface.cms.controllers
 
 import groovy.util.logging.Slf4j
+import hyperface.cms.commands.GenericErrorResponse
 import hyperface.cms.commands.rewards.RewardsRequest
 import hyperface.cms.commands.rewards.RewardsResponse
+import hyperface.cms.domains.CardStatement
 import hyperface.cms.domains.CreditAccount
 import hyperface.cms.domains.rewards.Reward
+import hyperface.cms.repository.CardStatementRepository
 import hyperface.cms.repository.CreditAccountRepository
 import hyperface.cms.service.RewardService
+import hyperface.cms.service.StatementService
 import hyperface.cms.util.Response
-import org.apache.tomcat.util.http.ResponseUtil
+import io.vavr.control.Either
+import org.apache.pdfbox.pdmodel.PDDocument
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.core.io.InputStreamResource
+import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
@@ -32,6 +39,12 @@ class AccountController {
 
     @Autowired
     private RewardService rewardService
+
+    @Autowired
+    StatementService statementService
+
+    @Autowired
+    CardStatementRepository cardStatementRepository
 
     @GetMapping(value = "rewards/{accountId}", produces = MediaType.APPLICATION_JSON_VALUE)
     ResponseEntity<RewardsResponse> getRewardsSummary(@PathVariable(name = "accountId") String accountId) {
@@ -74,5 +87,53 @@ class AccountController {
 
         RewardsResponse res = rewardService.executeOperation(request, creditAccount, reward)
         return Response.returnSimpleJson(res)
+    }
+
+    @RequestMapping(value = "/downloadStatement/{statementId}", consumes = MediaType.APPLICATION_FORM_URLENCODED_VALUE, produces = MediaType.APPLICATION_PDF_VALUE)
+    ResponseEntity<InputStreamResource> downloadStatement(@PathVariable String statementId) throws IOException {
+        Optional<CardStatement> statement = cardStatementRepository.findById(statementId)
+
+        String errorMessage = null
+        if (!statement.isPresent()) {
+            errorMessage = "Statement record with id: ${statementId} is not found"
+            log.error("Statement record with id: ${statementId} is not found")
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, errorMessage)
+        }
+
+        ByteArrayInputStream inputStream = null
+        try {
+            Either<GenericErrorResponse, PDDocument> statementResult = statementService.generateStatement(statement.get())
+            if (statementResult.isLeft()) {
+                errorMessage = statementResult.left().get().reason
+                log.error("Failed to generate downloadable statement: ${statementId} due to ${errorMessage}")
+                throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, errorMessage)
+            }
+
+            PDDocument document = statementResult.right().get()
+
+            ByteArrayOutputStream outputStream = new ByteArrayOutputStream()
+
+            document.save(outputStream)
+            document.close()
+
+            HttpHeaders headers = new HttpHeaders()
+            headers.add(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=${statementId}.pdf")
+
+            byte[] contentBytes = outputStream.toByteArray()
+            inputStream = new ByteArrayInputStream(contentBytes)
+            return ResponseEntity
+                    .ok()
+                    .headers(headers)
+                    .contentType(MediaType.APPLICATION_PDF)
+                    .body(new InputStreamResource(inputStream))
+        } catch (Exception e) {
+            println e.printStackTrace()
+            log.error("Error occurred while generating statement: ${e.message}")
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, errorMessage)
+        } finally {
+            if (inputStream != null) {
+                inputStream.close()
+            }
+        }
     }
 }

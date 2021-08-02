@@ -51,12 +51,6 @@ class CustomerController {
     @Autowired
     CustomerTxnRepository customerTxnRepository
 
-    @Autowired
-    StatementService statementService
-
-    @Autowired
-    CardStatementRepository cardStatementRepository
-
     @GetMapping(value = "/list")
     List<Customer> getCustomers() {
         return customerRepository.findAll()
@@ -127,51 +121,5 @@ class CustomerController {
         calendar.set(Calendar.MINUTE, 0)
         calendar.set(Calendar.SECOND, 0)
         return calendar.getTime()
-    }
-
-    @RequestMapping(value = "/downloadStatement/{statementId}", consumes = MediaType.APPLICATION_FORM_URLENCODED_VALUE, produces = MediaType.APPLICATION_PDF_VALUE)
-    ResponseEntity<InputStreamResource> downloadStatement(@PathVariable String statementId) throws IOException {
-        Optional<CardStatement> statement = cardStatementRepository.findById(statementId)
-
-        if (!statement.isPresent()) {
-            log.error("Statement record with id: ${statementId} is not found")
-            return ResponseEntity.notFound().build()
-        }
-
-        ByteArrayInputStream inputStream = null
-        try {
-            Either<GenericErrorResponse, PDDocument> statementResult = statementService.generateStatement(statement.get())
-            if (statementResult.isLeft()) {
-                String reason = statementResult.left().get().reason
-                log.error("Failed to generate downloadable statement: ${statementId} due to ${reason}")
-                return ResponseEntity.notFound().build()
-            }
-
-            PDDocument document = statementResult.right().get()
-
-            ByteArrayOutputStream outputStream = new ByteArrayOutputStream()
-
-            document.save(outputStream)
-            document.close()
-
-            HttpHeaders headers = new HttpHeaders()
-            headers.add(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=${statementId}.pdf")
-
-            byte[] contentBytes = outputStream.toByteArray()
-            inputStream = new ByteArrayInputStream(contentBytes)
-            return ResponseEntity
-                    .ok()
-                    .headers(headers)
-                    .contentType(MediaType.APPLICATION_PDF)
-                    .body(new InputStreamResource(inputStream))
-        } catch (Exception e) {
-            println e.printStackTrace()
-            log.error("Error occurred while generating statement: ${e.message}")
-        } finally {
-            if (inputStream != null) {
-                inputStream.close()
-            }
-        }
-        return ResponseEntity.ok().build()
     }
 }

@@ -11,6 +11,4 @@ interface CardRepository extends CrudRepository<Card, String> {
     List<Card> findByCreditAccount(CreditAccount creditAccount)
 
     List<Card> findByCreditAccountAndCardProgram(CreditAccount creditAccount, CreditCardProgram cardProgram)
-
-    List<Card> findByCreditAccountAndIsPrimaryCard(CreditAccount creditAccount, Boolean isPrimaryCard)
 }
