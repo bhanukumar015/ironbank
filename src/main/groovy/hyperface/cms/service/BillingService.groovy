@@ -1,8 +1,13 @@
 package hyperface.cms.service
 
 import groovy.util.logging.Slf4j
+import hyperface.cms.Constants
 import hyperface.cms.domains.CardStatement
 import hyperface.cms.domains.CreditAccount
+import hyperface.cms.domains.CreditCardProgram
+import hyperface.cms.domains.CreditCardScheduleOfCharges
+import hyperface.cms.domains.interest.Condition
+import hyperface.cms.domains.interest.InterestCriteria
 import hyperface.cms.domains.ledger.TransactionLedger
 import hyperface.cms.model.enums.BillingStatus
 import hyperface.cms.model.enums.LedgerTransactionType
@@ -150,6 +155,7 @@ class BillingService {
                             netFeeCharges -= transactionLedger.transactionAmount
                             break
                     }
+                    index++
                 }
 
                 //When Current Billing Cycle has zero transaction
@@ -158,7 +164,7 @@ class BillingService {
                     closingBalance = lastStatement.closingBalance
                 }
                 Double totalAmountDue = Math.abs(openingBalance) + totalDebits - totalCredits
-                Double minAmountDue = totalAmountDue * 0.05 + transactionLedgerRepository.getSumByCreditAccountAndTxnTypeInRange(account,LedgerTransactionType.TAX,account.currentBillingStartDate,account.currentBillingEndDate)
+                Double minAmountDue = totalAmountDue * 0.05 + transactionLedgerRepository.getSumByCreditAccountAndTxnTypeInRange(account,LedgerTransactionType.TAX,account.currentBillingStartDate,account.currentBillingEndDate) ?: 0.0
                 CardStatement cardStatement = new CardStatement()
                 cardStatement.totalAmountDue = totalAmountDue
                 cardStatement.minAmountDue = Math.max(minAmountDue, account.cards[0].cardProgram.minimumAmountDueFloor)
@@ -182,6 +188,7 @@ class BillingService {
                 cardStatement.netPurchases = netPurchases
                 cardStatement.billingCycleNumber = account.currentBillingCycle + 1
                 cardStatement.generatedOn = ZonedDateTime.now()
+                cardStatement.creditAccount = account
 
                 account.currentBillingCycle += 1
                 account.currentBillingStartDate = account.currentBillingStartDate.plusMonths(1)
@@ -190,8 +197,6 @@ class BillingService {
                 cardStatementRepository.save(cardStatement)
                 creditAccountRepository.save(account)
 
-            case BillingStatus.BILLED:
-                break
         }
         return true
     }
