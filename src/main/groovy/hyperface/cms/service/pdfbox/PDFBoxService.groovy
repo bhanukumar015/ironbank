@@ -1,10 +1,9 @@
 package hyperface.cms.service.pdfbox
 
+import org.apache.pdfbox.pdmodel.PDDocument
 import org.apache.pdfbox.pdmodel.PDPageContentStream
 import org.apache.pdfbox.pdmodel.font.PDFont
 import org.apache.pdfbox.pdmodel.graphics.image.PDImageXObject
-
-import java.awt.image.BufferedImage
 
 interface PDFBoxService {
 
@@ -21,6 +20,8 @@ interface PDFBoxService {
     void writeTableContents(PDPageContentStream contentStream, float[] rgb, List<List<String>> content, float x, float y, float rowH, float[] colW, float cellPadding, float fontHeight, float fontSize, PDFont font, char[] colAlign) throws IOException
 
     void drawTableBorders(PDPageContentStream contentStream, float[] rgb, int rows, int cols, float x, float y, float rowH, float rowW, float[] colW, boolean isHorizontalBorder, boolean isVerticalBorder) throws IOException
+
+    void addHyperlink(PDPageContentStream contentStream, PDDocument document, int pageIndex, PDFont font, String displayText, String url, float[] rgb, float fontSize, float x, float y, float lineSpace, int wrapLength) throws IOException
 
     void close(PDPageContentStream contentStream)
 }

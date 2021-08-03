@@ -533,9 +533,8 @@ class StatementService {
         pdfBoxService.drawImage(contentStream, getImageXObjectFromFile(appStoreFile), sx, sy - 30 as float, 25, 9)
 
         sx += (30)
-        pdfBoxService.writeText(contentStream, helvetica_bold, blue, 6.5, sx, sy - 12.5 as float, 0, 22, "www.chai.pt/PlayStore")
-        // todo: need to make it hyperlink
-        pdfBoxService.writeText(contentStream, helvetica_bold, blue, 6.5, sx, sy - 27.5 as float, 0, 22, "www.chai.pt/AppStore")
+        pdfBoxService.addHyperlink(contentStream, document, 0 as int, helvetica_bold, "www.chai.pt/PlayStore", "www.chai.pt/PlayStore", blue, 6.5, sx, sy - 12.5 as float, 0, 22)
+        pdfBoxService.addHyperlink(contentStream, document, 0 as int, helvetica_bold, "www.chai.pt/AppStore", "www.chai.pt/AppStore", blue, 6.5, sx, sy - 27.5 as float, 0, 22)
     }
 
     private void drawBankTransfer(PDPageContentStream contentStream, float sx, float sy, float w) {
@@ -592,7 +591,7 @@ class StatementService {
 
         text = "hf.co/1223828828"
         textW = pdfBoxService.getTextWidth(helvetica, 7.5, text)
-        pdfBoxService.writeText(contentStream, helvetica, blue, 7.5, (sx + (w - textW) / 2) as float, sy - 7.5 as float, 0, 100, text)
+        pdfBoxService.addHyperlink(contentStream, document, 0 as int, helvetica, text, text, blue, 7.5, (sx + (w - textW) / 2) as float, sy - 7.5 as float, 0, 100)
     }
 
     private void writePaymentOptionsHeading(PDPageContentStream contentStream, float sx, float sy, float w, String text) {

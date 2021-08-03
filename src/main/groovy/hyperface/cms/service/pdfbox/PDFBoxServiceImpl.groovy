@@ -7,17 +7,11 @@ import org.apache.pdfbox.pdmodel.PDPage
 import org.apache.pdfbox.pdmodel.PDPageContentStream
 import org.apache.pdfbox.pdmodel.common.PDRectangle
 import org.apache.pdfbox.pdmodel.font.PDFont
-import org.apache.pdfbox.pdmodel.font.PDType1Font
-import org.apache.pdfbox.pdmodel.graphics.image.JPEGFactory
 import org.apache.pdfbox.pdmodel.graphics.image.PDImageXObject
 import org.apache.pdfbox.pdmodel.interactive.action.PDActionURI
-import org.apache.pdfbox.pdmodel.interactive.annotation.AnnotationFilter
 import org.apache.pdfbox.pdmodel.interactive.annotation.PDAnnotationLink
 import org.apache.pdfbox.pdmodel.interactive.annotation.PDBorderStyleDictionary
 import org.springframework.stereotype.Service
-
-import java.awt.image.BufferedImage
-import java.util.stream.Collectors
 
 @Service
 class PDFBoxServiceImpl implements PDFBoxService {
@@ -143,6 +137,37 @@ class PDFBoxServiceImpl implements PDFBoxService {
             }
             drawSolidLine(contentStream, rgb, sx, sy, sx, sy - (rows * rowH) as float, 1)
         }
+
+        contentStream.restoreGraphicsState()
+    }
+
+    @Override
+    void addHyperlink(PDPageContentStream contentStream, PDDocument document, int pageIndex, PDFont font, String displayText, String url, float[] rgb, float fontSize, float x, float y, float lineSpace, int wrapLength) throws IOException {
+
+        contentStream.saveGraphicsState()
+
+        writeText(contentStream, font, rgb, fontSize, x, y, lineSpace, wrapLength, displayText)
+
+        float w = getTextWidth(font, fontSize, displayText)
+
+        PDAnnotationLink txtLink = new PDAnnotationLink()
+
+        PDBorderStyleDictionary underline = new PDBorderStyleDictionary()
+        underline.setStyle(PDBorderStyleDictionary.STYLE_UNDERLINE)
+        txtLink.setBorderStyle(underline)
+
+        PDActionURI actionURI = new PDActionURI()
+        actionURI.setURI(url)
+        txtLink.setAction(actionURI)
+
+        PDRectangle position = new PDRectangle()
+        position.setLowerLeftX(x)
+        position.setLowerLeftY(y)
+        position.setUpperRightX(x + w as float)
+        position.setUpperRightY(y + fontSize as float)
+        txtLink.setRectangle(position)
+
+        document.getPage(pageIndex).getAnnotations().add(txtLink);
 
         contentStream.restoreGraphicsState()
     }
