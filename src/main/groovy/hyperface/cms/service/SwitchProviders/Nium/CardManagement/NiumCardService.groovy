@@ -40,8 +40,8 @@ class NiumCardService {
     public static final String cardSetPinEndpoint = "customer/%s/wallet/%s/card/%s/pin"
     public static final String activateCardEndpoint = "customer/%s/wallet/%s/card/%s/activate"
 
-    Map<String, Object> createCard(CreateCardRequest createCardRequest, CreditCardProgram creditCardProgram
-                                   , Map<String, Object> customerSwitchMetadata) {
+    Map<String, Object> createCard(CreateCardRequest createCardRequest, CreditCardProgram creditCardProgram,
+                                   Map<String, Object> customerSwitchMetadata) {
         String customerHashId = customerSwitchMetadata.get('nium.customerHashId')
         String walletId = customerSwitchMetadata.get('nium.walletId')
         String endpoint = String.format(createCardEndpoint, customerHashId, walletId)
@@ -54,8 +54,8 @@ class NiumCardService {
         return niumCardMetadata
     }
 
-    HttpStatus createCardAsync(CreateCardRequest createCardRequest, CreditCardProgram creditCardProgram
-                               , Map<String, Object> customerSwitchMetadata) {
+    HttpStatus createCardAsync(CreateCardRequest createCardRequest, CreditCardProgram creditCardProgram,
+                               Map<String, Object> customerSwitchMetadata) {
         String customerHashId = customerSwitchMetadata.get('nium.customerHashId')
         String walletId = customerSwitchMetadata.get('nium.walletId')
         String endpoint = String.format(createCardEndpoint, customerHashId, walletId)

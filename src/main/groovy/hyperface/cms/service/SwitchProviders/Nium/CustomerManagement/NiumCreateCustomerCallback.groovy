@@ -9,6 +9,7 @@ import hyperface.cms.service.SwitchProviders.Nium.Utility.NiumObjectsCreation
 import hyperface.cms.service.SwitchProviders.Nium.Utility.NiumRestUtils
 import kong.unirest.Callback
 import kong.unirest.HttpResponse
+import kong.unirest.HttpStatus
 import kong.unirest.JsonNode
 import kong.unirest.UnirestException
 import org.slf4j.Logger
@@ -37,7 +38,7 @@ class NiumCreateCustomerCallback implements Callback<JsonNode> {
 
     @Override
     void completed(HttpResponse<JsonNode> response) {
-        if (response.status == 200) {
+        if (response.status == HttpStatus.OK) {
             log.info "POST request with request id ${response.getHeaders().get('x-request-id')} " +
                     "to Nium passed"
             def metadata = objectMapper.readValue(response.getBody().toString(), new TypeReference<Map<String, Object>>() {
@@ -49,7 +50,7 @@ class NiumCreateCustomerCallback implements Callback<JsonNode> {
             customerRepository.save(customer)
         } else if (retries > 0) {
             // Slow down in case of status code 429(too many requests, rate limit hit)
-            if (response.status == 429) {
+            if (response.status == HttpStatus.TOO_MANY_REQUESTS) {
                 sleep(2000)
             }
             log.info "Request to Nium failed with status code ${response.status}. Retrying..."

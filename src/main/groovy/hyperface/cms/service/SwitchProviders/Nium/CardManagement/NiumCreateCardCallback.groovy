@@ -17,6 +17,7 @@ import hyperface.cms.service.SwitchProviders.Nium.Utility.NiumObjectsCreation
 import hyperface.cms.service.SwitchProviders.Nium.Utility.NiumRestUtils
 import kong.unirest.Callback
 import kong.unirest.HttpResponse
+import kong.unirest.HttpStatus
 import kong.unirest.JsonNode
 import kong.unirest.UnirestException
 import org.slf4j.Logger
@@ -55,7 +56,7 @@ class NiumCreateCardCallback implements Callback<JsonNode>{
 
     @Override
     void completed(HttpResponse<JsonNode> response) {
-        if(response.getStatus() == 200) {
+        if(response.getStatus() == HttpStatus.OK) {
             log.info "POST request with request id ${response.getHeaders().get('x-request-id')} " +
                     "to Nium passed"
             CreditAccount creditAccount = creditAccountRepository.findById(cardRequest.creditAccountId)
@@ -103,7 +104,7 @@ class NiumCreateCardCallback implements Callback<JsonNode>{
         }
         else if(retries > 0){
             // Slow down in case of status code 429(too many requests, rate limit hit)
-            if(response.status == 429) {sleep(2000)}
+            if(response.status == HttpStatus.TOO_MANY_REQUESTS) {sleep(2000)}
             log.info "Request to Nium failed with status code ${response.status}. Retrying..."
             String requestBody = niumObjectsCreation.createNiumRequestCard(cardRequest, cardProgram)
             this.retries -= 1
