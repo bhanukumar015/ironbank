@@ -12,8 +12,9 @@ import hyperface.cms.domains.TransactionLimit
 import hyperface.cms.repository.CardControlRepository
 import hyperface.cms.repository.CardRepository
 import hyperface.cms.repository.CreditAccountRepository
-import hyperface.cms.service.SwitchProviders.Nium.NiumSwitchProvider
+import hyperface.cms.service.RestCallerService
 import hyperface.cms.service.SwitchProviders.Nium.Utility.NiumObjectsCreation
+import hyperface.cms.service.SwitchProviders.Nium.Utility.NiumRestUtils
 import kong.unirest.Callback
 import kong.unirest.HttpResponse
 import kong.unirest.JsonNode
@@ -27,7 +28,7 @@ import org.springframework.stereotype.Component
 class NiumCreateCardCallback implements Callback<JsonNode>{
 
     @Autowired
-    NiumSwitchProvider niumSwitchProvider
+    NiumRestUtils niumRestUtils
 
     @Autowired
     CardRepository cardRepository
@@ -40,6 +41,9 @@ class NiumCreateCardCallback implements Callback<JsonNode>{
 
     @Autowired
     CardControlRepository cardControlRepository
+
+    @Autowired
+    RestCallerService restCallerService
 
     CreateCardRequest cardRequest
     CreditCardProgram cardProgram
@@ -103,7 +107,7 @@ class NiumCreateCardCallback implements Callback<JsonNode>{
             log.info "Request to Nium failed with status code ${response.status}. Retrying..."
             String requestBody = niumObjectsCreation.createNiumRequestCard(cardRequest, cardProgram)
             this.retries -= 1
-            niumSwitchProvider.executeHttpPostRequestAsync(endpoint, requestBody, this)
+            restCallerService.executeHttpPostRequestAsync(niumRestUtils.prepareURL(endpoint), niumRestUtils.getHeaders(), requestBody, this)
         }
         else{
             log.info "Request to Nium failed with status code ${response.status}"
@@ -117,7 +121,7 @@ class NiumCreateCardCallback implements Callback<JsonNode>{
             log.info "Request to Nium failed with exception ${e.message}. Retrying..."
             String requestBody = niumObjectsCreation.createNiumRequestCard(cardRequest, cardProgram)
             this.retries -= 1
-            niumSwitchProvider.executeHttpPostRequestAsync(endpoint, requestBody, this)
+            restCallerService.executeHttpPostRequestAsync(niumRestUtils.prepareURL(endpoint), niumRestUtils.getHeaders(), requestBody, this)
         }
         else{
             throw new Exception("Retries exhausted. Request to create card failed with message ${e.message}")
