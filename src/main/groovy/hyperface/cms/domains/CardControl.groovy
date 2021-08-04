@@ -28,7 +28,11 @@ class CardControl {
     @Convert(converter = TransactionLimitConverter.class)
     TransactionLimit dailyTransactionLimit
     @Convert(converter = TransactionLimitConverter.class)
-    TransactionLimit perTransactionLimit
+    TransactionLimit onlineTransactionLimit
+    @Convert(converter = TransactionLimitConverter.class)
+    TransactionLimit offlineTransactionLimit
+    @Convert(converter = TransactionLimitConverter.class)
+    TransactionLimit cashWithdrawalLimit
     @Convert(converter = TransactionLimitConverter.class)
     TransactionLimit monthlyTransactionLimit
     @Convert(converter = TransactionLimitConverter.class)

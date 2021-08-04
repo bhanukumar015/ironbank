@@ -69,7 +69,7 @@ class NiumCreateCardCallback implements Callback<JsonNode>{
             card.creditAccount = creditAccount
             card.cardProgram = cardProgram
             card.cardBin = cardProgram.cardBin
-            card.cardType == cardRequest.cardType
+            card.cardType == Constants.CardType.valueOf(cardRequest.cardType)
             card.cardExpiryMonth = 10
             card.cardExpiryYear = 2030
             card.switchCardId = switchCardMetadata.get('cardHashId').toString()
@@ -85,7 +85,7 @@ class NiumCreateCardCallback implements Callback<JsonNode>{
                 enableOverseasTransactions = false
                 enableOfflineTransactions = false
                 enableNFC = false
-                enableOnlineTransactions = !(card.cardType == Constants.CardType.Phygital)
+                enableOnlineTransactions = !(card.cardType == Constants.CardType.Physical)
                 enableCashWithdrawal = false
                 enableMagStripe = false
                 dailyTransactionLimit = new TransactionLimit().tap{
@@ -94,9 +94,21 @@ class NiumCreateCardCallback implements Callback<JsonNode>{
                 dailyCashWithdrawalLimit = new TransactionLimit().tap{
                     limit = cardProgram.defaultDailyCashWithdrawalLimit
                 }
-                perTransactionLimit = new TransactionLimit()
-                monthlyTransactionLimit = new TransactionLimit()
-                lifetimeTransactionLimit = new TransactionLimit()
+                onlineTransactionLimit = new TransactionLimit().tap{
+                    limit = cardProgram.defaultOnlineTransactionLimit
+                }
+                offlineTransactionLimit = new TransactionLimit().tap{
+                    limit = cardProgram.defaultOfflineTransactionLimit
+                }
+                cashWithdrawalLimit = new TransactionLimit().tap{
+                    limit = cardProgram.defaultCashWithdrawalLimit
+                }
+                monthlyTransactionLimit = new TransactionLimit().tap{
+                    limit = cardProgram.defaultMonthlyTransactionLimit
+                }
+                lifetimeTransactionLimit = new TransactionLimit().tap{
+                    limit = cardProgram.defaultLifetimeTransactionLimit
+                }
             }
             cardControlRepository.save(cardControl)
             card.cardControl = cardControl

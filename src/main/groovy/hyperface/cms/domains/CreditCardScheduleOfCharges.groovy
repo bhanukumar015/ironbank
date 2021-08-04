@@ -1,5 +1,6 @@
 package hyperface.cms.domains
 
+import hyperface.cms.domains.converters.FeeJsonConverter
 import hyperface.cms.domains.converters.FeeStrategyJsonConverter
 import hyperface.cms.domains.converters.SimpleJsonConverter
 import hyperface.cms.domains.fees.FeeStrategy
@@ -48,11 +49,11 @@ class CreditCardScheduleOfCharges {
     @Column(columnDefinition="TEXT")
     FeeStrategy emiProcessingFeeStrategy
 
-    @Convert(converter = SimpleJsonConverter.class)
+    @Convert(converter = FeeJsonConverter.class)
     @Column(columnDefinition="JSON")
     LatePaymentFee lateFee
 
-    @Convert(converter = SimpleJsonConverter.class)
+    @Convert(converter = FeeJsonConverter.class)
     @Column(columnDefinition = "JSON")
     JoiningFee joiningFee
 

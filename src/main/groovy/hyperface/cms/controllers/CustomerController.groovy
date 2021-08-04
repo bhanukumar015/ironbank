@@ -1,10 +1,10 @@
 package hyperface.cms.controllers
 
-import hyperface.cms.Constants
+import groovy.util.logging.Slf4j
 import hyperface.cms.commands.CardTransaction
-import hyperface.cms.commands.CreateCardRequest
-import hyperface.cms.commands.CreateCreditAccountRequest
+import hyperface.cms.commands.CreateCustomerRequest
 import hyperface.cms.commands.FetchCardTransactionsRequest
+import hyperface.cms.commands.GenericErrorResponse
 import hyperface.cms.domains.Card
 import hyperface.cms.domains.CreditAccount
 import hyperface.cms.domains.Customer
@@ -14,60 +14,64 @@ import hyperface.cms.repository.CardRepository
 import hyperface.cms.repository.CustomerRepository
 import hyperface.cms.repository.CustomerTxnRepository
 import hyperface.cms.repository.LedgerEntryRepository
-import hyperface.cms.service.AccountService
+import hyperface.cms.service.CustomerService
+import hyperface.cms.util.Response
+import io.vavr.control.Either
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.MediaType
+import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.PathVariable
+import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestMethod
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 
+import javax.validation.Valid
+
 @RestController
 @RequestMapping("/customers")
+@Slf4j
 class CustomerController {
 
     @Autowired
     CustomerRepository customerRepository
 
     @Autowired
-    AccountService accountService
-
-    @Autowired
     CustomerTxnRepository customerTxnRepository
 
+    @Autowired
+    CustomerService customerService
+
     @GetMapping(value = "/list")
-    List<Customer> getCustomers() {
-        return customerRepository.findAll()
+    List<Customer> getCustomersList() {
+        return customerRepository.findAll() as List<Customer>
     }
 
-    @RequestMapping(value = "/create", method = RequestMethod.POST, consumes = MediaType.APPLICATION_FORM_URLENCODED_VALUE)
-    Customer createOrSave(Customer customer) {
-        println customer.dump()
-        return customerRepository.save(customer)
+    @PostMapping(value = "", consumes = MediaType.APPLICATION_JSON_VALUE,
+            produces = MediaType.APPLICATION_JSON_VALUE)
+    ResponseEntity createCustomer(@Valid @RequestBody CreateCustomerRequest req){
+        Either<GenericErrorResponse,Customer> customer = customerService.createCustomer(req)
+        if(customer.isLeft()){
+            String errorMessage = customer.left().get().reason
+            log.error("Customer creation failed with error: ${errorMessage}")
+            return Response.returnError(errorMessage)
+        }
+        return Response.returnSimpleJson(customer.right().get())
     }
 
-    // this will be allowed only by
-    @RequestMapping(value = "/createCreditAccount", method = RequestMethod.POST,
-                    consumes = MediaType.APPLICATION_FORM_URLENCODED_VALUE)
-    CreditAccount createCreditAccount(CreateCreditAccountRequest req) {
-        println req.dump()
-        String customerId = req.customerId
-        Customer customer = customerRepository.findById(customerId).get()
-        Integer approvedCreditLimit = req.approvedCreditLimit
-        CreditAccount creditAccount = accountService.createCreditAccount(customer, Constants.Currency.INR, approvedCreditLimit)
-        return creditAccount
-    }
-
-    @RequestMapping(value = "/createCard", method = RequestMethod.POST,
-            consumes = MediaType.APPLICATION_FORM_URLENCODED_VALUE)
-    Card createCard(CreateCardRequest req) {
-        println req.dump()
-
-        // check if a card already exists for this customer under this program
-        Card card = accountService.createCard(req)
-
-        return card
+    @GetMapping(value = "/{customerId}", produces = MediaType.APPLICATION_JSON_VALUE)
+    ResponseEntity getCustomer(@PathVariable(name = "customerId", required = true) String customerId){
+        Optional<Customer> customerOptional = customerRepository.findById(customerId)
+        if(!customerOptional.isPresent()){
+            String errorMessage = "No customer found with Id: ${customerId}"
+            log.error("Request to get customer failed with error: ${errorMessage}")
+            return Response.returnError(errorMessage)
+        }
+        Customer customer = customerOptional.get()
+        return Response.returnSimpleJson(customer)
     }
 
     @Autowired

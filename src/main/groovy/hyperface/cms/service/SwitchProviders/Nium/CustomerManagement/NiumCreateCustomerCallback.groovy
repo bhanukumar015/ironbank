@@ -2,9 +2,12 @@ package hyperface.cms.service.SwitchProviders.Nium.CustomerManagement
 
 import com.fasterxml.jackson.core.type.TypeReference
 import com.fasterxml.jackson.databind.ObjectMapper
+import hyperface.cms.commands.CreateCustomerRequest
 import hyperface.cms.domains.Customer
 import hyperface.cms.repository.CustomerRepository
 import hyperface.cms.service.RestCallerService
+import hyperface.cms.service.CustomerService
+import hyperface.cms.service.SwitchProviders.Nium.NiumSwitchProvider
 import hyperface.cms.service.SwitchProviders.Nium.Utility.NiumObjectsCreation
 import hyperface.cms.service.SwitchProviders.Nium.Utility.NiumRestUtils
 import kong.unirest.Callback
@@ -29,7 +32,10 @@ class NiumCreateCustomerCallback implements Callback<JsonNode> {
     @Autowired
     RestCallerService restCallerService
 
-    Customer customer
+    @Autowired
+    CustomerService customerService
+
+    CreateCustomerRequest request
     String endpoint
     int retries
 
@@ -41,12 +47,11 @@ class NiumCreateCustomerCallback implements Callback<JsonNode> {
         if (response.status == HttpStatus.OK) {
             log.info "POST request with request id ${response.getHeaders().get('x-request-id')} " +
                     "to Nium passed"
-            def metadata = objectMapper.readValue(response.getBody().toString(), new TypeReference<Map<String, Object>>() {
-            })
+            def metadata = objectMapper.readValue(response.getBody().toString(), new TypeReference<Map<String, Object>>() {})
             Map<String, Object> niumMetadata = new HashMap<>()
             niumMetadata.put("nium.customerHashId", metadata.get('customerHashId'))
             niumMetadata.put("nium.walletId", metadata.get('walletHashId'))
-            customer.switchMetadata = niumMetadata
+            Customer customer = customerService.createCustomerObject(request, niumMetadata)
             customerRepository.save(customer)
         } else if (retries > 0) {
             // Slow down in case of status code 429(too many requests, rate limit hit)
@@ -54,7 +59,7 @@ class NiumCreateCustomerCallback implements Callback<JsonNode> {
                 sleep(2000)
             }
             log.info "Request to Nium failed with status code ${response.status}. Retrying..."
-            String requestBody = NiumObjectsCreation.createNiumRequestCustomer(customer)
+            String requestBody = NiumObjectsCreation.createNiumRequestCustomer(request)
             this.retries -= 1
             restCallerService.executeHttpPostRequestAsync(niumRestUtils.prepareURL(endpoint), niumRestUtils.getHeaders(), requestBody, this)
         } else {
@@ -67,7 +72,7 @@ class NiumCreateCustomerCallback implements Callback<JsonNode> {
     void failed(UnirestException e) {
         if (retries > 0) {
             log.info "Request to Nium failed with message ${e.message}. Retrying..."
-            String requestBody = NiumObjectsCreation.createNiumRequestCustomer(customer)
+            String requestBody = NiumObjectsCreation.createNiumRequestCustomer(request)
             this.retries -= 1
             restCallerService.executeHttpPostRequestAsync(niumRestUtils.prepareURL(endpoint), niumRestUtils.getHeaders(), requestBody, this)
         } else {

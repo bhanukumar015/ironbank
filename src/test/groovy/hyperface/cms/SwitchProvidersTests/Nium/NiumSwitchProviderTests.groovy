@@ -1,9 +1,11 @@
 package hyperface.cms.SwitchProvidersTests.Nium
 
 import com.fasterxml.jackson.databind.ObjectMapper
+import hyperface.cms.Constants
 import hyperface.cms.Utility.MockObjects
 import hyperface.cms.commands.CardBlockActionRequest
 import hyperface.cms.commands.CreateCardRequest
+import hyperface.cms.commands.GenericErrorResponse
 import hyperface.cms.commands.SetCardPinRequest
 import hyperface.cms.config.SwitchProvidersConfig
 import hyperface.cms.domains.Card
@@ -18,6 +20,7 @@ import hyperface.cms.service.SwitchProviders.Nium.CardManagement.NiumCreateCardC
 import hyperface.cms.service.SwitchProviders.Nium.CardManagement.NiumCardService
 import hyperface.cms.service.SwitchProviders.Nium.CustomerManagement.NiumCreateCustomerCallback
 import hyperface.cms.service.SwitchProviders.Nium.CustomerManagement.NiumCustomerService
+import io.vavr.control.Either
 import kong.unirest.HttpMethod
 import kong.unirest.MockClient
 import kong.unirest.UnirestException
@@ -94,9 +97,10 @@ class NiumSwitchProviderTests {
         Mockito.when(mockCustomerRepository.save(Mockito.any(Customer.class))).thenReturn(null)
 
         Customer customer = mockObject.getTestCustomer()
-        HttpStatus response = niumCustomerService.createCustomer(customer)
+        def response = niumCustomerService.createCustomer(mockObject.getTestCreateCustomerRequest())
         // TODO: add better assert statements based on final response
-        assert response == HttpStatus.OK
+        assertNotNull(response.get("nium.customerHashId"))
+        assertNotNull(response.get("nium.walletId"))
     }
 
     @Test
@@ -111,7 +115,7 @@ class NiumSwitchProviderTests {
                         .completed(mockObject.mockCreateCustomerResponseAsync())}
 
         Customer customer = mockObject.getTestCustomer()
-        HttpStatus response = niumCustomerService.createCustomerAsync(customer)
+        HttpStatus response = niumCustomerService.createCustomerAsync(mockObject.getTestCreateCustomerRequest())
         // TODO: add better assert statements based on final response
         assert response == HttpStatus.OK
     }
@@ -211,8 +215,8 @@ class NiumSwitchProviderTests {
         Mockito.when(mockCardRepository.findById(Mockito.any()))
                 .thenReturn(Optional.of(mockObject.getTestCard()))
         SetCardPinRequest request = new SetCardPinRequest().tap {
-            cardId = UUID.randomUUID().toString()
             cardPin = '1234'
+            card = mockObject.getTestCard()
         }
         niumCardService.restCallerService = mockRestCallerService
         Mockito.when(mockRestCallerService.executeHttpPostRequestSync(Mockito.anyString(), Mockito.any(Map.class)
@@ -220,20 +224,9 @@ class NiumSwitchProviderTests {
                 .thenReturn(new ObjectMapper().writeValueAsString(new Object(){
                     String status = 'Success'
                 }))
-        assertTrue(cardService.setCardPin(request).right().get())
-    }
-
-    @Test
-    void testSetCardPinInvalidPin(){
-        cardService.cardRepository = mockCardRepository
-        Mockito.when(mockCardRepository.findById(Mockito.any()))
-                .thenReturn(Optional.of(mockObject.getTestCard()))
-        SetCardPinRequest request = new SetCardPinRequest().tap {
-            cardId = UUID.randomUUID().toString()
-            cardPin = '123A'
-        }
-
-        assertTrue(cardService.setCardPin(request).isLeft())
+        Either<GenericErrorResponse,String> response = cardService.setCardPin(request)
+        assertTrue(response.isRight())
+        assert response.right().get() == Constants.NiumSuccessResponseValue
     }
 
     @Test
@@ -247,15 +240,13 @@ class NiumSwitchProviderTests {
                 .thenReturn(mockObject.mockBlockCardResponse())
 
         CardBlockActionRequest request = new CardBlockActionRequest().tap{
-            cardId = UUID.randomUUID().toString()
-            blockAction = CardBlockActionRequest.BlockAction.TEMPORARYBLOCK
-            reason = CardBlockActionRequest.BlockActionReason.DAMAGED
+            blockAction = CardBlockActionRequest.BlockAction.TEMPORARYBLOCK.toString()
+            reason = CardBlockActionRequest.BlockActionReason.DAMAGED.toString()
+            card = mockObject.getTestCard()
         }
         def response = cardService.invokeCardBlockAction(request)
         assertTrue(response.isRight())
-        Card card = response.right().get()
-        assertTrue(card.isLocked)
-        assertFalse(card.hotlisted)
+        assert response.right().get() == Constants.NiumSuccessResponseValue
     }
 
     @Test
@@ -286,11 +277,8 @@ class NiumSwitchProviderTests {
 
         def response = cardService.activateCard(UUID.randomUUID().toString())
         assertTrue(response.isRight())
-        Card card = response.right().get()
-        assertTrue(card.physicallyIssued)
-        assertTrue(card.physicalCardActivated)
-        assertFalse(card.virtuallyIssued)
-        assertFalse(card.virtualCardActivated)
+        Boolean cardActivation = response.right().get()
+        assertTrue(cardActivation)
     }
 
     @Test
@@ -304,9 +292,8 @@ class NiumSwitchProviderTests {
                 , Mockito.any(), Mockito.anyInt()))
                 .thenReturn(mockObject.mockActivateCardResponseFailure())
 
-        assertThrows(Exception.class, () -> {
-            cardService.activateCard(UUID.randomUUID().toString())
-        })
+        Either<GenericErrorResponse, String> response = cardService.activateCard(UUID.randomUUID().toString())
+        assertTrue(response.isLeft())
     }
 
     @Test
@@ -318,7 +305,7 @@ class NiumSwitchProviderTests {
         def response = cardService.setCardLimits(mockObject.getTestCardLimitRequest())
         assertTrue(response.isRight())
         Card card = response.right().get()
-        assert card.cardControl.perTransactionLimit.limit == 100.00
+        assert card.cardControl.onlineTransactionLimit.limit == 100.00
         assert card.cardControl.monthlyTransactionLimit.isEnabled
         assert card.cardControl.dailyTransactionLimit.additionalMarginPercentage == 5.00
     }

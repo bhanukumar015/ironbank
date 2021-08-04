@@ -2,6 +2,7 @@ package hyperface.cms.service.SwitchProviders.Nium.CustomerManagement
 
 import com.fasterxml.jackson.core.type.TypeReference
 import com.fasterxml.jackson.databind.ObjectMapper
+import hyperface.cms.commands.CreateCustomerRequest
 import hyperface.cms.domains.Customer
 import hyperface.cms.repository.CustomerRepository
 import hyperface.cms.service.RestCallerService
@@ -31,22 +32,19 @@ class NiumCustomerService {
 
     public static final String createCustomerEndpoint = 'customer'
 
-    HttpStatus createCustomer(Customer customer) {
-        String requestBody = NiumObjectsCreation.createNiumRequestCustomer(customer)
+    Map<String,Object> createCustomer(CreateCustomerRequest req){
+        String requestBody = NiumObjectsCreation.createNiumRequestCustomer(req)
         String response = restCallerService.executeHttpPostRequestSync(niumRestUtils.prepareURL(createCustomerEndpoint), niumRestUtils.getHeaders(), requestBody, MAX_RETRIES)
-        def metadata = objectMapper.readValue(response, new TypeReference<Map<String, Object>>() {})
+        def metadata = objectMapper.readValue(response, new TypeReference<Map<String,Object>>(){})
         Map<String, Object> niumCustomerMetadata = new HashMap<>()
         niumCustomerMetadata.put("nium.customerHashId", metadata.get('customerHashId'))
         niumCustomerMetadata.put("nium.walletId", metadata.get('walletHashId'))
-        customer.switchMetadata = niumCustomerMetadata
-        customerRepository.save(customer)
-        // TODO: send appropriate response
-        return HttpStatus.OK
+        return niumCustomerMetadata
     }
 
-    HttpStatus createCustomerAsync(Customer customer) {
-        String requestBody = NiumObjectsCreation.createNiumRequestCustomer(customer)
-        createCustomerCallback.customer = customer
+    HttpStatus createCustomerAsync(CreateCustomerRequest req){
+        String requestBody = NiumObjectsCreation.createNiumRequestCustomer(req)
+        createCustomerCallback.request = req
         createCustomerCallback.retries = MAX_RETRIES
         createCustomerCallback.endpoint = createCustomerEndpoint
         restCallerService.executeHttpPostRequestAsync(niumRestUtils.prepareURL(createCustomerEndpoint), niumRestUtils.getHeaders(), requestBody, createCustomerCallback)

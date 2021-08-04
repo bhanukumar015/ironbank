@@ -1,11 +1,15 @@
 package hyperface.cms.commands
 
+import hyperface.cms.domains.Card
+
 class CardChannelControlsRequest {
-    String cardId
     boolean enableOverseasTransactions
     boolean enableOfflineTransactions
     boolean enableOnlineTransactions
     boolean enableMagStripe
     boolean enableNFC
-    boolean enableCashWithdrawl
+    boolean enableCashWithdrawal
+
+    // Derived Object
+    Card card
 }

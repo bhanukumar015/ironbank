@@ -29,8 +29,8 @@ class CreditCardProgram extends HyperfaceProgram {
     enum CardActivation {AUTO, FIRST_TRANSACTION, MANUAL}
 
     @Id
-    @GenericGenerator(name = "card_program_id", strategy = "hyperface.cms.util.UniqueIdGenerator")
-    @GeneratedValue(generator = "card_program_id")
+    @GenericGenerator(name = "credit_card_program_id", strategy = "hyperface.cms.util.UniqueIdGenerator")
+    @GeneratedValue(generator = "credit_card_program_id")
     String id
 
     String name
@@ -45,7 +45,9 @@ class CreditCardProgram extends HyperfaceProgram {
     // program defaults
     Integer defaultDailyTransactionLimit
     Integer defaultDailyCashWithdrawalLimit
-    Integer defaultPerTransactionLimit
+    Integer defaultOnlineTransactionLimit
+    Integer defaultOfflineTransactionLimit
+    Integer defaultCashWithdrawalLimit
     Integer defaultMonthlyTransactionLimit
     Integer defaultLifetimeTransactionLimit
 

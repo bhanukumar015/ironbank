@@ -1,5 +1,7 @@
 package hyperface.cms.service
 
+import com.fasterxml.jackson.databind.ObjectMapper
+import groovy.util.logging.Slf4j
 import hyperface.cms.Constants.CardType
 import hyperface.cms.commands.CardBlockActionRequest
 import hyperface.cms.commands.CardChannelControlsRequest
@@ -7,7 +9,7 @@ import hyperface.cms.commands.CardLimitsRequest
 import hyperface.cms.commands.CreateCardRequest
 import hyperface.cms.commands.GenericErrorResponse
 import hyperface.cms.commands.SetCardPinRequest
-import hyperface.cms.commands.CardLimitsRequest.CardLimit.TransactionLimitType
+import hyperface.cms.commands.CardLimit.TransactionLimitType
 import hyperface.cms.domains.Card
 import hyperface.cms.domains.CardControl
 import hyperface.cms.domains.CreditAccount
@@ -27,6 +29,7 @@ import org.springframework.stereotype.Service
 import java.security.InvalidParameterException
 
 @Service
+@Slf4j
 class CardService {
 
     @Autowired
@@ -70,7 +73,7 @@ class CardService {
         Customer customer = customerOptional.get()
         if(!cardRequest.isAddOn){
             Card existingCard = creditAccount.cards.find {card -> card.isPrimaryCard
-                    && (cardRequest.cardType == card.cardType)}
+                    && (cardRequest.cardType == card.cardType.toString())}
             if(existingCard){
                 return Either.left(new GenericErrorResponse(reason: "Primary card of type ${cardRequest.cardType}" +
                         "already exists with cardId ${existingCard.id}"))
@@ -86,36 +89,44 @@ class CardService {
             feeService.createAddOnCardFeeEntry(primaryCard)
         }
 
-        if(cardRequest.cardType == CardType.Phygital){
+        if(cardRequest.cardType == CardType.Phygital.toString()){
             def physicalCardMetadata = niumCardService.createCard(cardRequest.tap {() ->
-                    cardType = CardType.Physical}
+                    cardType = CardType.Physical.toString()}
                     , cardProgram, customer.switchMetadata)
             def virtualCardMetadata = niumCardService.createCard(cardRequest.tap {() ->
-                    cardType = CardType.Virtual}
+                    cardType = CardType.Virtual.toString()}
                     , cardProgram, customer.switchMetadata)
-            Card physicalCard = createCardObject(physicalCardMetadata, CardType.Physical, cardProgram)
-            Card virtualCard = createCardObject(virtualCardMetadata, CardType.Virtual, cardProgram)
-            CardControl cardControl = createCardControlObject(cardRequest.cardType, cardProgram)
+            Card physicalCard = createCardObject(cardRequest.isAddOn, physicalCardMetadata, CardType.Physical, cardProgram)
+            Card virtualCard = createCardObject(cardRequest.isAddOn, virtualCardMetadata, CardType.Virtual, cardProgram)
+            CardControl cardControl = createCardControlObject(CardType.valueOf(cardRequest.cardType), cardProgram)
             physicalCard.phygitalDuoCardId = virtualCard.id
             virtualCard.phygitalDuoCardId = physicalCard.id
             cardControlRepository.save(cardControl)
             physicalCard.cardControl = virtualCard.cardControl = cardControl
+            physicalCard.creditAccount = virtualCard.creditAccount = creditAccount
             cardRepository.save(physicalCard)
             cardRepository.save(virtualCard)
+            creditAccount.cards.add(physicalCard)
+            creditAccount.cards.add(virtualCard)
+            creditAccountRepository.save(creditAccount)
             return Either.right(Arrays.asList(physicalCard, virtualCard))
         }
         else{
             def cardMetadata = niumCardService.createCard(cardRequest, cardProgram, customer.switchMetadata)
-            Card card = createCardObject(cardMetadata, cardRequest.cardType, cardProgram)
+            Card card = createCardObject(cardRequest.isAddOn, cardMetadata, CardType.valueOf(cardRequest.cardType), cardProgram)
             CardControl cardControl = createCardControlObject(card.cardType, cardProgram)
             cardControlRepository.save(cardControl)
             card.cardControl = cardControl
+            card.creditAccount = creditAccount
+            log.info(new ObjectMapper().writeValueAsString(card))
             cardRepository.save(card)
+            creditAccount.cards.add(card)
+            creditAccountRepository.save(creditAccount)
             return Either.right(Arrays.asList(card))
         }
     }
 
-    private Card createCardObject(Map<String,Object> switchMetadata, CardType cardType, CreditCardProgram cardProgram){
+    private Card createCardObject(Boolean isAddon, Map<String,Object> switchMetadata, CardType cardType, CreditCardProgram cardProgram){
         Card card = new Card()
         card.cardProgram = cardProgram
         card.cardBin = cardProgram.cardBin
@@ -129,7 +140,11 @@ class CardService {
                 ? cardProgram.virtualCardActivation == CreditCardProgram.CardActivation.AUTO
                 : false
         card.physicalCardActivated = false
+        card.isPrimaryCard = !isAddon
         card.cardType = cardType
+        card.isFirstRepaymentDone = false
+        card.isFirstPurchaseDone = false
+        log.info(new ObjectMapper().writeValueAsString(card))
         return card
     }
 
@@ -149,8 +164,14 @@ class CardService {
             dailyCashWithdrawalLimit = new TransactionLimit().tap{
                 limit = cardProgram.defaultDailyCashWithdrawalLimit
             }
-            perTransactionLimit = new TransactionLimit().tap{
-                limit = cardProgram.defaultPerTransactionLimit
+            onlineTransactionLimit = new TransactionLimit().tap{
+                limit = cardProgram.defaultOnlineTransactionLimit
+            }
+            offlineTransactionLimit = new TransactionLimit().tap{
+                limit = cardProgram.defaultOfflineTransactionLimit
+            }
+            cashWithdrawalLimit = new TransactionLimit().tap{
+                limit = cardProgram.defaultCashWithdrawalLimit
             }
             monthlyTransactionLimit = new TransactionLimit().tap{
                 limit = cardProgram.defaultMonthlyTransactionLimit
@@ -161,86 +182,68 @@ class CardService {
         }
     }
 
-    Either<GenericErrorResponse,Boolean> setCardPin(SetCardPinRequest setCardPinRequest){
-        // Valid pin has length of 4 and consists only digits
-        if(!(setCardPinRequest.cardPin ==~ /^\d\d\d\d$/)){
-            return Either.left(new GenericErrorResponse(reason: "Card pin length should be 4 and contain only digits"))
+    Either<GenericErrorResponse,String> setCardPin(SetCardPinRequest request){
+        if(!request.card.physicallyIssued){
+            String errorMessage = "Pin update is only allowed for physical cards"
+            log.error("Pin update failed with error: ${errorMessage}")
+            return Either.left(new GenericErrorResponse(reason: errorMessage))
         }
-        Optional<Card> cardOptional = cardRepository.findById(setCardPinRequest.cardId)
-        if(!cardOptional.isPresent()){
-            return Either.left(new GenericErrorResponse(reason: "No card found with id " +
-                    "${setCardPinRequest.cardId}"))
-        }
-        Card card = cardOptional.get()
-        if(!card.physicallyIssued){
-            throw new InvalidParameterException("Pin update is only allowed for physical cards")
-        }
-        Customer customer = card.creditAccount.customer
-        return Either.right(niumCardService.setCardPin(setCardPinRequest, customer.switchMetadata, card.switchCardId))
+        Customer customer = request.card.creditAccount.customer
+        return niumCardService.setCardPin(request, customer.switchMetadata)
     }
 
-    Either<GenericErrorResponse,Card> invokeCardBlockAction(CardBlockActionRequest cardBlockActionRequest){
-        Optional<Card> cardOptional = cardRepository.findById(cardBlockActionRequest.cardId)
-        if(!cardOptional.isPresent()){
-            return Either.left(new GenericErrorResponse(reason: "No card found with id " +
-                    "${cardBlockActionRequest.cardId}"))
-        }
-        Card card = cardOptional.get()
-        if(card.hotlisted){
+    Either<GenericErrorResponse, String> invokeCardBlockAction(CardBlockActionRequest req){
+        if(req.card.hotlisted){
             return Either.left(new GenericErrorResponse(reason: "Block actions cannot be invoked on a hotlisted card"))
         }
-        if(niumCardService.invokeCardAction(cardBlockActionRequest, card.creditAccount.customer.switchMetadata
-                        ,card.switchCardId)){
-            switch (cardBlockActionRequest.blockAction){
-                case CardBlockActionRequest.BlockAction.TEMPORARYBLOCK:
-                    card.isLocked = true
+        def response = niumCardService.invokeCardAction(req)
+        if(response.isRight()){
+            switch (req.blockAction){
+                case CardBlockActionRequest.BlockAction.TEMPORARYBLOCK.toString():
+                    req.card.isLocked = true
                     break
-                case CardBlockActionRequest.BlockAction.UNBLOCK:
-                    card.isLocked = false
+                case CardBlockActionRequest.BlockAction.UNBLOCK.toString():
+                    req.card.isLocked = false
                     break
-                case CardBlockActionRequest.BlockAction.PERMANENTBLOCK:
-                    card.hotlisted = true
+                case CardBlockActionRequest.BlockAction.PERMANENTBLOCK.toString():
+                    req.card.hotlisted = true
                     break
                 default:
                     throw new InvalidParameterException("Invalid block action!")
             }
-            cardRepository.save(card)
+            cardRepository.save(req.card)
+            return Either.right(response.right().get())
         }
-        return Either.right(card)
+        return Either.left(response.left().get().reason)
     }
 
-    Either<GenericErrorResponse,Card> updateCardControls(CardChannelControlsRequest cardChannelControlsRequest){
-        Optional<Card> cardOptional = cardRepository.findById(cardChannelControlsRequest.cardId)
-        if(!cardOptional.isPresent()){
-            return Either.left(new GenericErrorResponse(reason: "No card found with card id " +
-                    "${cardChannelControlsRequest.cardId}"))
-        }
-        Card card = cardOptional.get()
-
-        if(card.hotlisted){
+    Either<GenericErrorResponse,Card> updateCardControls(CardChannelControlsRequest req){
+        if(req.card.hotlisted){
             throw new Exception("Channel controls cannot be invoked on a hotlisted card")
         }
-        card.cardControl.enableOnlineTransactions = cardChannelControlsRequest.enableOnlineTransactions
-        card.cardControl.enableOfflineTransactions = cardChannelControlsRequest.enableOfflineTransactions
-        card.cardControl.enableOverseasTransactions = cardChannelControlsRequest.enableOverseasTransactions
-        card.cardControl.enableCashWithdrawal = cardChannelControlsRequest.enableCashWithdrawl
-        card.cardControl.enableMagStripe = cardChannelControlsRequest.enableMagStripe
-        card.cardControl.enableNFC = cardChannelControlsRequest.enableNFC
-        cardControlRepository.save(card.cardControl)
-        return Either.right(card)
+        CardControl cardControl = req.card.cardControl
+        cardControl.enableOnlineTransactions = req.enableOnlineTransactions ?: cardControl.enableOnlineTransactions
+        cardControl.enableOfflineTransactions = req.enableOfflineTransactions ?: cardControl.enableOfflineTransactions
+        cardControl.enableOverseasTransactions = req.enableOverseasTransactions ?: cardControl.enableOverseasTransactions
+        cardControl.enableCashWithdrawal = req.enableCashWithdrawal ?: cardControl.enableCashWithdrawal
+        cardControl.enableMagStripe = req.enableMagStripe ?: cardControl.enableMagStripe
+        cardControl.enableNFC = req.enableNFC ?: cardControl.enableNFC
+        cardControlRepository.save(req.card.cardControl)
+        return Either.right(req.card)
     }
 
-    Either<GenericErrorResponse,Card> activateCard(String cardId){
+    Either<GenericErrorResponse,String> activateCard(String cardId){
         Optional<Card> cardOptional = cardRepository.findById(cardId)
         if(!cardOptional.isPresent()){
             return Either.left(new GenericErrorResponse(reason: "No card found with id " +
                     "${cardId}"))
         }
         Card card = cardOptional.get()
-        boolean response = niumCardService.activateCard(card)
-        if(response){
+        def response = niumCardService.activateCard(card)
+        if(response.isRight()){
             card.physicalCardActivated = card.physicallyIssued ? true : card.physicalCardActivated
             card.virtualCardActivated = card.virtuallyIssued ? true : card.virtualCardActivated
+            cardRepository.save(card)
         }
         if(card.cardType == CardType.Virtual && card.phygitalDuoCardId != null
                 && card.cardProgram.physicalCardActivation == CreditCardProgram.CardActivation.AUTO){
@@ -248,53 +251,55 @@ class CardService {
             secondaryCard.physicalCardActivated = true
             cardRepository.save(secondaryCard)
         }
-        cardRepository.save(card)
-
-        return Either.right(card)
+        return response
     }
 
-    Either<GenericErrorResponse,Card> setCardLimits(CardLimitsRequest cardLimitsRequest){
-        Optional<Card> cardOptional = cardRepository.findById(cardLimitsRequest.cardId)
-        if(!cardOptional.isPresent()){
-            return Either.left(new GenericErrorResponse(reason: "No card found with card id " +
-                    "${cardLimitsRequest.cardId}"))
-        }
-        Card card = cardOptional.get()
-        CardControl cardControl = card.cardControl
+    Either<GenericErrorResponse,Card> setCardLimits(CardLimitsRequest req){
+        CardControl cardControl = req.card.cardControl
 
-        for(def limit : cardLimitsRequest.cardLimits){
+        for(def limit : req.cardLimits){
             switch(limit.type){
-                case TransactionLimitType.PER_TRANSACTION_LIMIT:
-                    cardControl.perTransactionLimit.limit = limit.value.toDouble()
-                    cardControl.perTransactionLimit.isEnabled = limit.isEnabled
-                    cardControl.perTransactionLimit.additionalMarginPercentage = limit.additionalMarginPercentage
+                case TransactionLimitType.ONLINE_TRANSACTION_LIMIT.toString():
+                    cardControl.onlineTransactionLimit.limit = limit.value.toDouble()
+                    cardControl.onlineTransactionLimit.isEnabled = limit.isEnabled
+                    cardControl.onlineTransactionLimit.additionalMarginPercentage = limit.additionalMarginPercentage
                     break
-                case TransactionLimitType.DAILY_LIMIT:
+                case TransactionLimitType.OFFLINE_TRANSACTION_LIMIT.toString():
+                    cardControl.offlineTransactionLimit.limit = limit.value.toDouble()
+                    cardControl.offlineTransactionLimit.isEnabled = limit.isEnabled
+                    cardControl.offlineTransactionLimit.additionalMarginPercentage = limit.additionalMarginPercentage
+                    break
+                case TransactionLimitType.CASH_WITHDRAWAL_LIMIT.toString():
+                    cardControl.cashWithdrawalLimit.limit = limit.value.toDouble()
+                    cardControl.cashWithdrawalLimit.isEnabled = limit.isEnabled
+                    cardControl.cashWithdrawalLimit.additionalMarginPercentage = limit.additionalMarginPercentage
+                    break
+                case TransactionLimitType.DAILY_LIMIT.toString():
                     cardControl.dailyTransactionLimit.limit = limit.value.toDouble()
                     cardControl.dailyTransactionLimit.isEnabled = limit.isEnabled
                     cardControl.dailyTransactionLimit.additionalMarginPercentage = limit.additionalMarginPercentage
                     break
-                case TransactionLimitType.MONTHLY_LIMIT:
+                case TransactionLimitType.MONTHLY_LIMIT.toString():
                     cardControl.monthlyTransactionLimit.limit = limit.value.toDouble()
                     cardControl.monthlyTransactionLimit.isEnabled = limit.isEnabled
                     cardControl.monthlyTransactionLimit.additionalMarginPercentage = limit.additionalMarginPercentage
                     break
-                case TransactionLimitType.LIFETIME_LIMIT:
+                case TransactionLimitType.LIFETIME_LIMIT.toString():
                     cardControl.lifetimeTransactionLimit.limit = limit.value.toDouble()
                     cardControl.lifetimeTransactionLimit.isEnabled = limit.isEnabled
                     cardControl.lifetimeTransactionLimit.additionalMarginPercentage = limit.additionalMarginPercentage
                     break
-                case TransactionLimitType.DAILY_CASH_WITHDRAWAL_LIMIT:
+                case TransactionLimitType.DAILY_CASH_WITHDRAWAL_LIMIT.toString():
                     cardControl.dailyCashWithdrawalLimit.limit = limit.value.toDouble()
                     cardControl.dailyCashWithdrawalLimit.isEnabled = limit.isEnabled
                     cardControl.dailyCashWithdrawalLimit.additionalMarginPercentage = limit.additionalMarginPercentage
                     break
                 default:
-                    throw new InvalidParameterException("Invalid Limit Type!")
+                    return Either.left(new GenericErrorResponse(reason: "Invalid limit type"))
             }
         }
         cardControlRepository.save(cardControl)
-        return Either.right(card)
+        return Either.right(req.card)
     }
 
 }

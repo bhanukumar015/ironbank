@@ -3,7 +3,9 @@ package hyperface.cms.Utility
 import hyperface.cms.Constants
 import hyperface.cms.commands.CardChannelControlsRequest
 import hyperface.cms.commands.CardLimitsRequest
+import hyperface.cms.commands.CardLimit
 import hyperface.cms.commands.CreateCardRequest
+import hyperface.cms.commands.CreateCustomerRequest
 import hyperface.cms.commands.CustomerTransactionRequest
 import hyperface.cms.domains.Address
 import hyperface.cms.domains.Card
@@ -32,6 +34,28 @@ class MockObjects {
 
     private static Random random = new Random(System.currentTimeMillis())
 
+    private String getRandomEmailAddress(){
+        def length = 16
+        def pool = ['a'..'z','A'..'Z',0..9,'.'].flatten()
+        return ((0..length-1).collect{pool[random.nextInt(pool.size())]}).join().concat('1@gmail.com')
+    }
+
+    private String getRandomMobileNumber(){
+        return (Math.abs(random.nextInt() % 9000000000) + 1000000).toString()
+    }
+
+    private Address getTestAddress() {
+        return new Address().tap {
+            line1 = "1"
+            line2 = "MG Road"
+            city = "Bengaluru"
+            pincode = "560001"
+            state = "Karnataka"
+            country = "IN"
+            countryCodeIso = "IN"
+        }
+    }
+
     Customer getTestCustomer(){
         Customer customer = new Customer()
         customer.firstName = "John"
@@ -43,11 +67,7 @@ class MockObjects {
         customer.mobile = getRandomMobileNumber()
         customer.countryCode = "IN"
         customer.nationality = "IN"
-        customer.currentAddress = new Address()
-        customer.currentAddress.city = "Bengaluru"
-        customer.currentAddress.pincode = "560001"
-        customer.currentAddress.line1 = "1, MG Road"
-        customer.currentAddress.line2 = "Bengaluru Urban"
+        customer.currentAddress = this.getTestAddress()
         Map<String,Object> metadata = new HashMap<String,Object>()
         metadata.put('nium.customerHashId', UUID.randomUUID().toString())
         metadata.put('nium.walletId', UUID.randomUUID().toString())
@@ -61,7 +81,7 @@ class MockObjects {
         cardRequest.cardProgramId = '1'
         cardRequest.customerId = '1'
         cardRequest.creditAccountId = UUID.randomUUID().toString()
-        cardRequest.cardType = Constants.CardType.Physical
+        cardRequest.cardType = Constants.CardType.Physical.toString()
         return cardRequest
     }
 
@@ -126,6 +146,8 @@ class MockObjects {
             physicalCardActivated = false
             cardType = Constants.CardType.Physical
             isPrimaryCard = true
+            isLocked = false
+            hotlisted = false
             CardControl mockCardControl = new CardControl().tap{
                 cardSuspendedByCustomer = false
                 enableOverseasTransactions = false
@@ -146,7 +168,7 @@ class MockObjects {
                     additionalMarginPercentage = 5.00
                     isEnabled = true
                 }
-                perTransactionLimit = new TransactionLimit().tap{
+                onlineTransactionLimit = new TransactionLimit().tap{
                     limit = 10
                     currentValue = 0.00
                     additionalMarginPercentage = 5.00
@@ -168,37 +190,44 @@ class MockObjects {
 
     CardLimitsRequest getTestCardLimitRequest(){
         return new CardLimitsRequest().tap {
-            cardId = UUID.randomUUID().toString()
-            cardLimits = new LinkedList<CardLimitsRequest.CardLimit>()
-            cardLimits.add(new CardLimitsRequest.CardLimit().tap {
-                type = CardLimitsRequest.CardLimit.TransactionLimitType.DAILY_LIMIT
+            cardLimits = new LinkedList<CardLimit>()
+            cardLimits.add(new CardLimit().tap {
+                type = CardLimit.TransactionLimitType.DAILY_LIMIT.toString()
                 value = 1000.00
                 additionalMarginPercentage = 5.0
                 isEnabled = true
             })
-            cardLimits.add(new CardLimitsRequest.CardLimit().tap {
-                type = CardLimitsRequest.CardLimit.TransactionLimitType.PER_TRANSACTION_LIMIT
+            cardLimits.add(new CardLimit().tap {
+                type = CardLimit.TransactionLimitType.ONLINE_TRANSACTION_LIMIT.toString()
                 value = 100.00
                 additionalMarginPercentage = 5.0
                 isEnabled = false
             })
-            cardLimits.add(new CardLimitsRequest.CardLimit().tap {
-                type = CardLimitsRequest.CardLimit.TransactionLimitType.MONTHLY_LIMIT
+            cardLimits.add(new CardLimit().tap {
+                type = CardLimit.TransactionLimitType.MONTHLY_LIMIT.toString()
                 value = 10000.00
                 additionalMarginPercentage = 5.0
                 isEnabled = true
             })
+            card = this.getTestCard()
         }
     }
 
-    private String getRandomEmailAddress(){
-        def length = 16
-        def pool = ['a'..'z','A'..'Z',0..9,'.'].flatten()
-        return ((0..length-1).collect{pool[random.nextInt(pool.size())]}).join().concat('1@gmail.com')
-    }
-
-    private String getRandomMobileNumber(){
-        return (Math.abs(random.nextInt() % 9000000000) + 1000000).toString()
+    CreateCustomerRequest getTestCreateCustomerRequest() {
+        return new CreateCustomerRequest().tap {
+            firstname = "John"
+            lastname = "Smith"
+            pancard = "AAAAA1234A"
+            emailAddress = this.getRandomEmailAddress()
+            mobileNumber = this.getRandomMobileNumber()
+            mobileCountryCode = "91"
+            dateOfBirth = "1990-01-01"
+            countryCode = "IN"
+            nationality = "IN"
+            gender = "Male"
+            currentAddress = this.getTestAddress()
+            permanentAddress = this.getTestAddress()
+        }
     }
 
     String mockCreateCustomerResponse(){
@@ -356,13 +385,13 @@ class MockObjects {
 
     CardChannelControlsRequest getTestCardControlsRequest(){
         return new CardChannelControlsRequest().tap{
-            cardId = UUID.randomUUID().toString()
             enableMagStripe = false
             enableOfflineTransactions = true
             enableNFC = false
-            enableCashWithdrawl = false
+            enableCashWithdrawal = false
             enableOverseasTransactions = true
             enableOnlineTransactions = true
+            card = this.getTestCard()
         }
     }
 

@@ -2,9 +2,11 @@ package hyperface.cms.service.SwitchProviders.Nium.CardManagement
 
 import com.fasterxml.jackson.core.type.TypeReference
 import com.fasterxml.jackson.databind.ObjectMapper
+import groovy.util.logging.Slf4j
 import hyperface.cms.Constants
 import hyperface.cms.commands.CardBlockActionRequest
 import hyperface.cms.commands.CreateCardRequest
+import hyperface.cms.commands.GenericErrorResponse
 import hyperface.cms.commands.SetCardPinRequest
 import hyperface.cms.domains.Card
 import hyperface.cms.domains.CreditCardProgram
@@ -12,12 +14,14 @@ import hyperface.cms.domains.Customer
 import hyperface.cms.service.RestCallerService
 import hyperface.cms.service.SwitchProviders.Nium.Utility.NiumObjectsCreation
 import hyperface.cms.service.SwitchProviders.Nium.Utility.NiumRestUtils
+import io.vavr.control.Either
 import org.apache.commons.codec.binary.Base64
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
 
 @Service
+@Slf4j
 class NiumCardService {
 
     @Autowired
@@ -69,50 +73,54 @@ class NiumCardService {
         return HttpStatus.OK
     }
 
-    Boolean invokeCardAction(CardBlockActionRequest cardBlockActionRequest
-                             , Map<String, Object> customerSwitchMetadata, String switchCardId) {
-        String customerHashId = customerSwitchMetadata.get('nium.customerHashId')
-        String walletId = customerSwitchMetadata.get('nium.walletId')
-        String endpoint = String.format(cardActionEndpoint, customerHashId, walletId, switchCardId)
-        String requestBody = niumObjectsCreation.createCardActionRequest(cardBlockActionRequest)
-        String response = restCallerService.executeHttpPostRequestSync(niumRestUtils.prepareURL(endpoint), niumRestUtils.getHeaders(), requestBody, MAX_RETRIES)
-        def metadata = objectMapper.readValue(response, new TypeReference<Map<String, Object>>() {})
-        return (metadata.get(Constants.NiumSuccessResponseKey) == Constants.NiumSuccessResponseValue)
+    Either<GenericErrorResponse, String> invokeCardAction(CardBlockActionRequest req){
+        String customerHashId = req.card.creditAccount.customer.switchMetadata.get('nium.customerHashId')
+        String walletId = req.card.creditAccount.customer.switchMetadata.get('nium.walletId')
+        String endpoint = String.format(cardActionEndpoint, customerHashId, walletId, req.card.switchCardId)
+        String requestBody = niumObjectsCreation.createCardActionRequest(req)
+        try{
+            String response = restCallerService.executeHttpPostRequestSync(niumRestUtils.prepareURL(endpoint), niumRestUtils.getHeaders(), requestBody, MAX_RETRIES)
+            def metadata = objectMapper.readValue(response, new TypeReference<Map<String,String>>(){})
+            return Either.right(metadata.get(Constants.NiumSuccessResponseKey))
+        }
+        catch(Exception ex){
+            return Either.left(new GenericErrorResponse(reason: ex.message))
+        }
     }
 
-    Boolean setCardPin(SetCardPinRequest setCardPinRequest, Map<String, Object> customerSwitchMetadata
-                       , String switchCardId) {
+    Either<GenericErrorResponse,String> setCardPin(SetCardPinRequest request, Map<String,Object> customerSwitchMetadata){
         String customerHashId = customerSwitchMetadata.get('nium.customerHashId')
         String walletId = customerSwitchMetadata.get('nium.walletId')
-        String endpoint = String.format(cardSetPinEndpoint, customerHashId, walletId, switchCardId)
-        String requestBody = objectMapper.writeValueAsString(new Object() {
-            String pinBlock = new String(Base64.encodeBase64(setCardPinRequest.cardPin.getBytes()))
+        String endpoint = String.format(cardSetPinEndpoint, customerHashId, walletId, request.card.switchCardId)
+        String requestBody = objectMapper.writeValueAsString(new Object(){
+            String pinBlock = new String(Base64.encodeBase64(request.cardPin.getBytes()))
         })
         String response = restCallerService.executeHttpPostRequestSync(niumRestUtils.prepareURL(endpoint), niumRestUtils.getHeaders(), requestBody, MAX_RETRIES)
-        def metadata = objectMapper.readValue(response, new TypeReference<Map<String, Object>>() {})
-        return (metadata.get(Constants.NiumSuccessResponseKey) == Constants.NiumSuccessResponseValue)
+        def metadata = objectMapper.readValue(response, new TypeReference<Map<String,String>>(){})
+        return Either.right(metadata.get(Constants.NiumSuccessResponseKey))
     }
 
-    Boolean activateCard(Card card) {
+    Either<GenericErrorResponse,String> activateCard(Card card){
         Customer customer = card?.creditAccount?.customer
-        if (customer == null) {
-            throw new IllegalArgumentException("No customer assigned to card with id ${card.id}")
+        if(customer == null) {
+            return Either.left(new GenericErrorResponse(reason:  "No customer assigned to card with id ${card.id}"))
         }
         String switchCardHashId = card.switchCardId
         String customerHashId = customer.switchMetadata.get('nium.customerHashId')
         String walletId = customer.switchMetadata.get('nium.walletId')
         String endpoint = String.format(activateCardEndpoint, customerHashId, walletId, switchCardHashId)
-        try {
+        try{
             String response = restCallerService.executeHttpPostRequestSync(niumRestUtils.prepareURL(endpoint), niumRestUtils.getHeaders(), null, MAX_RETRIES)
-            def metadata = objectMapper.readValue(response, new TypeReference<Map<String, Object>>() {})
-            if (metadata.get('status') == 'Active') {
-                return true
+            def metadata = objectMapper.readValue(response, new TypeReference<Map<String,String>>(){})
+            if(metadata.get('status') == 'Active'){
+                return Either.right("Success")
             }
-            throw new Exception("Card Activation failed with error: ${metadata.get('errors')}")
+            return Either.left(new GenericErrorResponse(reason: "Card Activation failed with error:" +
+                    " ${metadata.get('errors')}"))
         }
-        catch (Exception ex) {
-            throw new Exception("Card activation request for card Id ${card.id} " +
-                    "with Nium failed with message: ${ex.message}")
+        catch(Exception ex){
+            return Either.left(new GenericErrorResponse(reason: "Card activation request for card Id ${card.id} " +
+                    "with Nium failed with message: ${ex.message}"))
         }
     }
 }

@@ -1,5 +1,6 @@
 package hyperface.cms.domains
 
+import com.fasterxml.jackson.annotation.JsonIgnore
 import hyperface.cms.Constants
 import org.hibernate.annotations.GenericGenerator
 
@@ -49,16 +50,20 @@ class Card implements PaymentInstrument {
     @JoinColumn(name = "card_control_id")
     CardControl cardControl
 
+    // TODO: Resolve cyclic dependency
+    @JsonIgnore
     @ManyToOne
     @JoinColumn(name = "credit_account_id")
     CreditAccount creditAccount
 
     @ManyToOne
+    @JoinColumn(name = "credit_card_program_id")
     CreditCardProgram cardProgram
 
     @ManyToOne
     Client client
 
+    @JsonIgnore
     @ManyToOne
     Bank bank
 }

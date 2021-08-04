@@ -1,5 +1,8 @@
 package hyperface.cms.commands
 
+import hyperface.cms.domains.Card
+import hyperface.cms.util.validation.StringEnumeration
+
 // Request to block/unblock a card
 class CardBlockActionRequest {
 
@@ -9,12 +12,14 @@ class CardBlockActionRequest {
     // Enum to specify the reason for card action
     enum BlockActionReason{ FRAUD, CARDLOST, CARDSTOLEN, DAMAGED }
 
-    String cardId
+    @StringEnumeration(enumClass = BlockAction.class, message = "Invalid input for block action. Must be one of [TEMPORARYBLOCK, PERMANENTBLOCK, UNBLOCK]")
+    String blockAction
 
-    BlockAction blockAction
+    @StringEnumeration(enumClass = BlockActionReason.class, message = "Invalid input for reason. Must be one of [FRAUD, CARDLOST, CARDSTOLEN, DAMAGED]")
+    String reason
 
-    // Reason for the action
-    BlockActionReason reason
+    // Derived class
+    Card card
 }
 
 

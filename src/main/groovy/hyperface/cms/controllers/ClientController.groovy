@@ -6,19 +6,21 @@ import hyperface.cms.domains.ClientKey
 import hyperface.cms.repository.ClientKeyRepository
 import hyperface.cms.repository.ClientRepository
 import hyperface.cms.service.ClientService
+import hyperface.cms.util.Response
 import hyperface.cms.util.Utilities
 import org.apache.commons.lang3.ObjectUtils
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
+import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.PathVariable
+import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.PutMapping
+import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
-import org.springframework.web.bind.annotation.RequestMethod
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.multipart.MultipartFile
-import org.springframework.web.server.ResponseStatusException
 import hyperface.cms.Constants
 
 @RestController
@@ -35,8 +37,8 @@ class ClientController {
     @Autowired
     ClientService clientService
 
-    @RequestMapping(value = "", method = RequestMethod.POST, consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    ResponseEntity<Client> createOrSave(Client client, @RequestParam(name = "logoFile", required = false) MultipartFile multipartFile) throws IOException {
+    @PostMapping(value = "", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    ResponseEntity<Client> createOrSave(@RequestBody Client client, @RequestParam(name = "logoFile", required = false) MultipartFile multipartFile) throws IOException {
         if (ObjectUtils.isNotEmpty(multipartFile)) {
             String logo = Utilities.convertFileToBase64String(multipartFile)
             client.setLogo(logo)
@@ -48,23 +50,24 @@ class ClientController {
         return ResponseEntity.ok(client)
     }
 
-    @RequestMapping(value = "/{clientId}", method = RequestMethod.GET)
-    ResponseEntity<Client> get(@PathVariable(name = "clientId") String clientId) {
+    @PostMapping(value = "/{clientId}", produces = MediaType.APPLICATION_JSON_VALUE)
+    ResponseEntity get(@PathVariable(name = "clientId") String clientId) {
         Optional<Client> client = clientRepository.findById(clientId)
         if (!client.isPresent()) {
             String errorMessage = "Client record with id: ${clientId} is not found"
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, errorMessage)
+            log.error("Request to get client failed die to error: ${errorMessage}")
+            return Response.returnError(errorMessage)
         }
-        return ResponseEntity.status(HttpStatus.OK).body(client.get())
+        return Response.returnSimpleJson(client.get())
     }
 
-    @RequestMapping(value = "/{clientId}", method = RequestMethod.POST, consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PutMapping(value = "/{clientId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     ResponseEntity update(Client client, @PathVariable(name = "clientId") String clientId, @RequestParam(name = "logoFile", required = false) MultipartFile multipartFile) throws IOException {
         Optional<Client> clientOptional = clientRepository.findById(clientId)
         if (!clientOptional.isPresent()) {
             String errorMessage = "Client record with id: ${clientId} is not found"
             log.error(errorMessage)
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorMessage)
+            return Response.returnError(errorMessage)
         }
 
         Client existingClient = clientOptional.get()
@@ -80,11 +83,12 @@ class ClientController {
         }
         clientRepository.save(existingClient)
 
-        return ResponseEntity.noContent().build()
+        return Response.returnSimpleJson(existingClient)
     }
 
-    @RequestMapping(value = "/{clientId}", method = RequestMethod.DELETE)
-    void delete(@PathVariable(name = "clientId") String clientId) {
+    @DeleteMapping(value = "/{clientId}")
+    ResponseEntity delete(@PathVariable(name = "clientId") String clientId) {
         clientRepository.deleteById(clientId)
+        return Response.returnSimpleJson(null)
     }
 }

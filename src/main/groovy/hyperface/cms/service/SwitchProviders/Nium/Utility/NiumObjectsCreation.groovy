@@ -3,8 +3,8 @@ package hyperface.cms.service.SwitchProviders.Nium.Utility
 import com.fasterxml.jackson.databind.ObjectMapper
 import hyperface.cms.commands.CardBlockActionRequest
 import hyperface.cms.commands.CreateCardRequest
+import hyperface.cms.commands.CreateCustomerRequest
 import hyperface.cms.domains.CreditCardProgram
-import hyperface.cms.domains.Customer
 import hyperface.cms.repository.CardRepository
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Component
@@ -19,36 +19,36 @@ class NiumObjectsCreation {
 
     private static ObjectMapper objectMapper = new ObjectMapper()
 
-    public static String createNiumRequestCustomer(Customer customer)
+    static String createNiumRequestCustomer(CreateCustomerRequest req)
     {
         Object niumCustomer = new Object(){
-            String firstName = customer.firstName
-            String middleName = customer.middleName
-            String lastName = customer.lastName
-            String preferredName = customer.firstName
-            String dateOfBirth = customer.dateOfBirth
-            String nationality = customer.nationality
-            String email = customer.email
-            String countryCode = customer.countryCode
-            String mobile = customer.mobile
-            String deliveryAddress1 = customer.currentAddress.line1
-            String deliveryAddress2 = customer.currentAddress.line2
-            String deliveryCity = customer.currentAddress.city
-            String deliveryLandmark = customer.currentAddress.landmark
-            String deliveryState = customer.currentAddress.state
-            String deliveryZipCode = customer.currentAddress.pincode
-            String deliveryCountry = customer.currentAddress.countryCodeIso
-            String billingAddress1 = customer.currentAddress.line1
-            String billingAddress2 = customer.currentAddress.line2
-            String billingCity = customer.currentAddress.city
-            String billingLandmark = customer.currentAddress.landmark
-            String billingZipCode = customer.currentAddress.pincode
-            String billingCountry = customer.currentAddress.countryCodeIso
+            String firstName = req.firstname
+            String middleName = req.middlename
+            String lastName = req.lastname
+            String preferredName = req.firstname
+            String dateOfBirth = req.dateOfBirth
+            String nationality = req.nationality
+            String email = req.emailAddress
+            String countryCode = req.countryCode
+            String mobile = req.mobileNumber
+            String deliveryAddress1 = req.currentAddress.line1
+            String deliveryAddress2 = req.currentAddress.line2
+            String deliveryCity = req.currentAddress.city
+            String deliveryLandmark = req.currentAddress.landmark
+            String deliveryState = req.currentAddress.state
+            String deliveryZipCode = req.currentAddress.pincode
+            String deliveryCountry = req.currentAddress.countryCodeIso
+            String billingAddress1 = req.currentAddress.line1
+            String billingAddress2 = req.currentAddress.line2
+            String billingCity = req.currentAddress.city
+            String billingLandmark = req.currentAddress.landmark
+            String billingZipCode = req.currentAddress.pincode
+            String billingCountry = req.currentAddress.countryCodeIso
         }
         return objectMapper.writeValueAsString(niumCustomer)
     }
 
-    public String createNiumRequestCard(CreateCardRequest cardRequest, CreditCardProgram creditCardProgram){
+    String createNiumRequestCard(CreateCardRequest cardRequest, CreditCardProgram creditCardProgram){
         Object niumCard = new Object(){
             String cardIssuanceAction = (cardRequest.isAddOn) ? "ADD_ON" : "NEW"
             String demogOverridden = !cardRequest.isPrimaryCardHolder
@@ -59,7 +59,7 @@ class NiumObjectsCreation {
             String mobile = cardRequest.addOnCardHolder?.mobileNumber
             String cardFeeCurrencyCode = creditCardProgram.baseCurrency
             String cardExpiry = cardRequest.cardExpiry
-            String cardType = NiumCardType.fromString(cardRequest.cardType.toString())
+            String cardType = NiumCardType.fromString(cardRequest.cardType)
             String logoId = creditCardProgram.cardLogoId
             String plasticId = creditCardProgram.cardPlasticId
             String cardHashId = (cardRequest.isAddOn)
@@ -69,7 +69,7 @@ class NiumObjectsCreation {
         return objectMapper.writeValueAsString(niumCard)
     }
 
-    public String createCardActionRequest(CardBlockActionRequest cardBlockActionRequest){
+    String createCardActionRequest(CardBlockActionRequest cardBlockActionRequest){
         Object cardAction = new Object(){
             String reason = cardBlockActionRequest.reason
             String blockAction = cardBlockActionRequest.blockAction

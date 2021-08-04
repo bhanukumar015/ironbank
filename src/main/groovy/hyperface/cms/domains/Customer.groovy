@@ -1,5 +1,6 @@
 package hyperface.cms.domains
 
+import hyperface.cms.domains.converters.AddressJsonConverter
 import hyperface.cms.domains.converters.SimpleJsonConverter
 import hyperface.cms.domains.kyc.CustomerKycDetail
 import org.hibernate.annotations.GenericGenerator
@@ -27,12 +28,13 @@ class Customer {
     String dateOfBirth
     String email
     String mobile
+    String pancard
     String countryCode
     String nationality
 
-    @Convert(converter = SimpleJsonConverter.class)
+    @Convert(converter = AddressJsonConverter.class)
     Address currentAddress
-    @Convert(converter = SimpleJsonConverter.class)
+    @Convert(converter = AddressJsonConverter.class)
     Address permanentAddress
 
     @Convert(converter = SimpleJsonConverter.class)

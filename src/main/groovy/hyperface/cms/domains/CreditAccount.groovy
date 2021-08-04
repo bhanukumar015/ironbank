@@ -1,6 +1,6 @@
 package hyperface.cms.domains
 
-
+import com.fasterxml.jackson.annotation.JsonIgnore
 import hyperface.cms.domains.rewards.Reward
 import hyperface.cms.model.enums.RepaymentIndicator
 import org.hibernate.annotations.GenericGenerator
@@ -44,6 +44,7 @@ class CreditAccount extends Account {
     @Enumerated(EnumType.STRING)
     RepaymentIndicator previousCycleRepaymentIndicator
 
+    @JsonIgnore
     @ManyToOne
     @JoinColumn(name = "customer_id")
     Customer customer
