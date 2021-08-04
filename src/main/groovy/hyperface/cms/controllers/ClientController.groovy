@@ -92,9 +92,9 @@ class ClientController {
 
     /* Test Route which requires authentication */
     @RequestMapping(value = "/test", method = RequestMethod.GET)
-    String ping(HttpServletRequest request) {
+    String test(HttpServletRequest request) {
         Client client = request.getSession().getAttribute("client") as Client
         log.info("LoggedIn Client: ${client.getName()}")
-        return "pong"
+        return "This is a sample response from an authenticated route: [${request.getServletPath()}]"
     }
 }

@@ -1,6 +1,5 @@
 package hyperface.cms.service
 
-import com.fasterxml.jackson.databind.ObjectMapper
 import groovy.util.logging.Slf4j
 import kong.unirest.Callback
 import kong.unirest.HttpResponse
@@ -8,8 +7,8 @@ import kong.unirest.HttpStatus
 import kong.unirest.JsonNode
 import kong.unirest.Unirest
 import kong.unirest.UnirestException
+import org.apache.commons.lang3.ObjectUtils
 import org.springframework.stereotype.Service
-import org.springframework.web.server.ResponseStatusException
 
 /** Service class to call REST services.*/
 @Service
@@ -17,6 +16,8 @@ import org.springframework.web.server.ResponseStatusException
 class RestCallerService<T> {
 
     void executeHttpPostRequestAsync(String url, Map<String, String> headers, String requestBody, Callback<JsonNode> callback) {
+        log.info("Invoking external Async REST API call to [POST] - ${url}")
+
         try {
             Unirest.post(url)
                     .headers(headers)
@@ -30,6 +31,8 @@ class RestCallerService<T> {
     }
 
     String executeHttpPostRequestSync(String url, Map<String, String> headers, String requestBody, int retries) {
+        log.info("Invoking external Sync REST API call to [POST] - ${url}")
+
         try {
             String retryResponse = null
             HttpResponse<JsonNode> response = Unirest.post(url)
@@ -65,29 +68,40 @@ class RestCallerService<T> {
         }
     }
 
-    String executeHttpPostRequestSync(String url, Map<String, String> headers, String requestBody) {
-        try {
-            HttpResponse<JsonNode> response = Unirest.post(url)
-                    .headers(headers)
-                    .body(requestBody)
-                    .asJson()
+    HttpResponse<JsonNode> executeHttpPostRequestSync(String url, Map<String, String> headers, T requestBody) {
+        log.info("Invoking external Sync REST API call to [POST] - ${url}")
 
-            if ([HttpStatus.OK, HttpStatus.CREATED].contains(response.status)) {
-                return response.getBody()
+        try {
+            HttpResponse<JsonNode> response
+            if (ObjectUtils.isEmpty(requestBody)) {
+                response = Unirest.post(url)
+                        .headers(headers)
+                        .asJson()
             } else {
-                log.error(response.status as String)
-                log.error(response.getParsingError().isPresent().toString())
-                log.error(response.mapError().toString())
-                throw new ResponseStatusException(response.status as org.springframework.http.HttpStatus, response.mapError().toString())
+                response = Unirest.post(url)
+                        .headers(headers)
+                        .body(requestBody)
+                        .asJson()
             }
+            return response
+
         } catch (UnirestException ex) {
             log.info "Post request to ${url} failed with message ${ex.message}"
             throw new Exception("Post request to ${url} failed with message ${ex.message}")
         }
     }
 
-    Map processStringResponseToMap(String response) {
-        ObjectMapper objectMapper = new ObjectMapper()
-        return objectMapper.readValue(response, Map.class)
+    HttpResponse<JsonNode> executeHttpDeleteRequestSync(String url, Map<String, String> headers) {
+        log.info("Invoking external Sync REST API call to [DELETE] - ${url}")
+
+        try {
+            HttpResponse<JsonNode> response = Unirest.delete(url)
+                    .headers(headers)
+                    .asJson()
+            return response
+        } catch (UnirestException ex) {
+            log.info "Delete request to ${url} failed with message ${ex.message}"
+            throw new Exception("Delete request to ${url} failed with message ${ex.message}")
+        }
     }
 }

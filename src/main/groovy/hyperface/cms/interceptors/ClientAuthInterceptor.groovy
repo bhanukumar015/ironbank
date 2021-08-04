@@ -2,7 +2,6 @@ package hyperface.cms.interceptors
 
 import groovy.util.logging.Slf4j
 import hyperface.cms.Constants
-import hyperface.cms.config.APIGatewayConfig
 import hyperface.cms.domains.Client
 import hyperface.cms.domains.ClientKey
 import hyperface.cms.repository.ClientKeyRepository
@@ -23,9 +22,6 @@ import javax.servlet.http.HttpServletResponse
 class ClientAuthInterceptor implements HandlerInterceptor {
 
     @Autowired
-    APIGatewayConfig gatewayConfig
-
-    @Autowired
     ClientKeyRepository clientKeyRepository
 
     @Override
@@ -33,7 +29,7 @@ class ClientAuthInterceptor implements HandlerInterceptor {
         if (StringUtils.isBlank(request.getHeader(Constants.API_KEY))) {
             String errorMessage = "Invalid request headers"
             log.error(errorMessage)
-            throw new ResponseStatusException(HttpStatus.PRECONDITION_FAILED, errorMessage)
+            throw new ResponseStatusException(HttpStatus.PRECONDITION_REQUIRED, errorMessage)
         }
 
         String secretKey = request.getHeader(Constants.API_KEY)
