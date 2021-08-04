@@ -12,10 +12,12 @@ import hyperface.cms.domains.TransactionLimit
 import hyperface.cms.repository.CardControlRepository
 import hyperface.cms.repository.CardRepository
 import hyperface.cms.repository.CreditAccountRepository
-import hyperface.cms.service.SwitchProviders.Nium.NiumSwitchProvider
+import hyperface.cms.service.RestCallerService
 import hyperface.cms.service.SwitchProviders.Nium.Utility.NiumObjectsCreation
+import hyperface.cms.service.SwitchProviders.Nium.Utility.NiumRestUtils
 import kong.unirest.Callback
 import kong.unirest.HttpResponse
+import kong.unirest.HttpStatus
 import kong.unirest.JsonNode
 import kong.unirest.UnirestException
 import org.slf4j.Logger
@@ -27,7 +29,7 @@ import org.springframework.stereotype.Component
 class NiumCreateCardCallback implements Callback<JsonNode>{
 
     @Autowired
-    NiumSwitchProvider niumSwitchProvider
+    NiumRestUtils niumRestUtils
 
     @Autowired
     CardRepository cardRepository
@@ -41,6 +43,9 @@ class NiumCreateCardCallback implements Callback<JsonNode>{
     @Autowired
     CardControlRepository cardControlRepository
 
+    @Autowired
+    RestCallerService restCallerService
+
     CreateCardRequest cardRequest
     CreditCardProgram cardProgram
     String endpoint
@@ -51,7 +56,7 @@ class NiumCreateCardCallback implements Callback<JsonNode>{
 
     @Override
     void completed(HttpResponse<JsonNode> response) {
-        if(response.getStatus() == 200) {
+        if(response.getStatus() == HttpStatus.OK) {
             log.info "POST request with request id ${response.getHeaders().get('x-request-id')} " +
                     "to Nium passed"
             CreditAccount creditAccount = creditAccountRepository.findById(cardRequest.creditAccountId)
@@ -99,11 +104,11 @@ class NiumCreateCardCallback implements Callback<JsonNode>{
         }
         else if(retries > 0){
             // Slow down in case of status code 429(too many requests, rate limit hit)
-            if(response.status == 429) {sleep(2000)}
+            if(response.status == HttpStatus.TOO_MANY_REQUESTS) {sleep(2000)}
             log.info "Request to Nium failed with status code ${response.status}. Retrying..."
             String requestBody = niumObjectsCreation.createNiumRequestCard(cardRequest, cardProgram)
             this.retries -= 1
-            niumSwitchProvider.executeHttpPostRequestAsync(endpoint, requestBody, this)
+            restCallerService.executeHttpPostRequestAsync(niumRestUtils.prepareURL(endpoint), niumRestUtils.getHeaders(), requestBody, this)
         }
         else{
             log.info "Request to Nium failed with status code ${response.status}"
@@ -117,7 +122,7 @@ class NiumCreateCardCallback implements Callback<JsonNode>{
             log.info "Request to Nium failed with exception ${e.message}. Retrying..."
             String requestBody = niumObjectsCreation.createNiumRequestCard(cardRequest, cardProgram)
             this.retries -= 1
-            niumSwitchProvider.executeHttpPostRequestAsync(endpoint, requestBody, this)
+            restCallerService.executeHttpPostRequestAsync(niumRestUtils.prepareURL(endpoint), niumRestUtils.getHeaders(), requestBody, this)
         }
         else{
             throw new Exception("Retries exhausted. Request to create card failed with message ${e.message}")

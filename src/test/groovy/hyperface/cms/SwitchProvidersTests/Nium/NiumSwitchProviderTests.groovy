@@ -13,11 +13,11 @@ import hyperface.cms.repository.CardRepository
 import hyperface.cms.repository.CreditAccountRepository
 import hyperface.cms.repository.CustomerRepository
 import hyperface.cms.service.CardService
+import hyperface.cms.service.RestCallerService
 import hyperface.cms.service.SwitchProviders.Nium.CardManagement.NiumCreateCardCallback
 import hyperface.cms.service.SwitchProviders.Nium.CardManagement.NiumCardService
 import hyperface.cms.service.SwitchProviders.Nium.CustomerManagement.NiumCreateCustomerCallback
 import hyperface.cms.service.SwitchProviders.Nium.CustomerManagement.NiumCustomerService
-import hyperface.cms.service.SwitchProviders.Nium.NiumSwitchProvider
 import kong.unirest.HttpMethod
 import kong.unirest.MockClient
 import kong.unirest.UnirestException
@@ -66,10 +66,10 @@ class NiumSwitchProviderTests {
     CardRepository mockCardRepository
 
     @Mock
-    NiumSwitchProvider mockNiumSwitchProvider
+    RestCallerService mockRestCallerService
 
     @Autowired
-    SwitchProvidersConfig switchProvidersConfig;
+    SwitchProvidersConfig switchProvidersConfig
 
     @Autowired
     NiumCustomerService niumCustomerService
@@ -105,8 +105,8 @@ class NiumSwitchProviderTests {
                 .thenReturn(mockObject.mockCreateCustomerResponse())
         createCustomerCallback.customerRepository = mockCustomerRepository
         Mockito.when(mockCustomerRepository.save(Mockito.any(Customer.class))).thenReturn(null)
-        niumCustomerService.niumSwitchProvider = mockNiumSwitchProvider
-        Mockito.when(mockNiumSwitchProvider.executeHttpPostRequestAsync(Mockito.any(), Mockito.any(), Mockito.any()))
+        niumCustomerService.restCallerService = mockRestCallerService
+        Mockito.when(mockRestCallerService.executeHttpPostRequestAsync(Mockito.anyString(), Mockito.any(Map.class), Mockito.anyString(), Mockito.any()))
                 .thenAnswer{(createCustomerCallback)
                         .completed(mockObject.mockCreateCustomerResponseAsync())}
 
@@ -129,8 +129,8 @@ class NiumSwitchProviderTests {
                 .thenReturn(Optional.of(mockObject.getTestCreditCardProgram()))
         cardService.cardRepository = mockCardRepository
         Mockito.when(mockCardRepository.save(Mockito.any())).thenReturn(null)
-        niumCardService.niumSwitchProvider = mockNiumSwitchProvider
-        Mockito.when(mockNiumSwitchProvider.executeHttpPostRequestSync(Mockito.anyString()
+        niumCardService.restCallerService = mockRestCallerService
+        Mockito.when(mockRestCallerService.executeHttpPostRequestSync(Mockito.anyString(), Mockito.any(Map.class)
                 , Mockito.anyString(), Mockito.anyInt()))
                 .thenReturn(mockObject.mockCreateCardResponse())
 
@@ -174,9 +174,9 @@ class NiumSwitchProviderTests {
         createCardCallback.creditAccountRepository = mockCreditAccountRepository
         Mockito.when(mockCreditAccountRepository.findById(Mockito.any()))
                 .thenReturn(Optional.of(mockObject.getTestCreditAccount()))
-        niumCardService.niumSwitchProvider = mockNiumSwitchProvider
-        Mockito.when(mockNiumSwitchProvider.executeHttpPostRequestAsync(Mockito.any()
-                , Mockito.any(), Mockito.any()))
+        niumCardService.restCallerService = mockRestCallerService
+        Mockito.when(mockRestCallerService.executeHttpPostRequestAsync(Mockito.anyString(), Mockito.any(Map.class)
+                , Mockito.anyString(), Mockito.any()))
                 .thenAnswer{(createCardCallback)
                         .completed(mockObject.mockAddCardResponseAsync())}
         Customer customer = mockObject.getTestCustomer()
@@ -192,9 +192,9 @@ class NiumSwitchProviderTests {
         createCardCallback.creditAccountRepository = mockCreditAccountRepository
         Mockito.when(mockCreditAccountRepository.findById(Mockito.any()))
                 .thenReturn(Optional.of(mockObject.getTestCreditAccount()))
-        niumCardService.niumSwitchProvider = mockNiumSwitchProvider
-        Mockito.when(mockNiumSwitchProvider.executeHttpPostRequestAsync(Mockito.any()
-                , Mockito.any(), Mockito.any()))
+        niumCardService.restCallerService = mockRestCallerService
+        Mockito.when(mockRestCallerService.executeHttpPostRequestAsync(Mockito.anyString(), Mockito.any(Map.class)
+                , Mockito.anyString(), Mockito.any()))
                 .thenAnswer{
                     createCardCallback.retries = 0
                     (createCardCallback)
@@ -214,8 +214,8 @@ class NiumSwitchProviderTests {
             cardId = UUID.randomUUID().toString()
             cardPin = '1234'
         }
-        niumCardService.niumSwitchProvider = mockNiumSwitchProvider
-        Mockito.when(mockNiumSwitchProvider.executeHttpPostRequestSync(Mockito.anyString()
+        niumCardService.restCallerService = mockRestCallerService
+        Mockito.when(mockRestCallerService.executeHttpPostRequestSync(Mockito.anyString(), Mockito.any(Map.class)
                 , Mockito.anyString(), Mockito.anyInt()))
                 .thenReturn(new ObjectMapper().writeValueAsString(new Object(){
                     String status = 'Success'
@@ -241,8 +241,8 @@ class NiumSwitchProviderTests {
         cardService.cardRepository = mockCardRepository
         Mockito.when(mockCardRepository.findById(Mockito.any()))
                 .thenReturn(Optional.of(mockObject.getTestCard()))
-        niumCardService.niumSwitchProvider = mockNiumSwitchProvider
-        Mockito.when(mockNiumSwitchProvider.executeHttpPostRequestSync(Mockito.anyString()
+        niumCardService.restCallerService = mockRestCallerService
+        Mockito.when(mockRestCallerService.executeHttpPostRequestSync(Mockito.anyString(), Mockito.any(Map.class)
                 , Mockito.any(), Mockito.anyInt()))
                 .thenReturn(mockObject.mockBlockCardResponse())
 
@@ -279,8 +279,8 @@ class NiumSwitchProviderTests {
         cardService.cardRepository = mockCardRepository
         Mockito.when(mockCardRepository.findById(Mockito.any())).thenReturn(Optional.of(mockObject.getTestCard()))
         Mockito.when(mockCardRepository.save(Mockito.any())).thenReturn(null)
-        niumCardService.niumSwitchProvider = mockNiumSwitchProvider
-        Mockito.when(mockNiumSwitchProvider.executeHttpPostRequestSync(Mockito.anyString()
+        niumCardService.restCallerService = mockRestCallerService
+        Mockito.when(mockRestCallerService.executeHttpPostRequestSync(Mockito.anyString(), Mockito.any(Map.class)
                 , Mockito.any(), Mockito.anyInt()))
                 .thenReturn(mockObject.mockActivateCardResponse())
 
@@ -299,8 +299,8 @@ class NiumSwitchProviderTests {
         Mockito.when(mockCardRepository.findById(Mockito.any())).thenReturn(Optional.of(mockObject.getTestCard()))
         Mockito.when(mockCardRepository.save(Mockito.any())).thenReturn(null)
 
-        niumCardService.niumSwitchProvider = mockNiumSwitchProvider
-        Mockito.when(mockNiumSwitchProvider.executeHttpPostRequestSync(Mockito.anyString()
+        niumCardService.restCallerService = mockRestCallerService
+        Mockito.when(mockRestCallerService.executeHttpPostRequestSync(Mockito.anyString(), Mockito.any(Map.class)
                 , Mockito.any(), Mockito.anyInt()))
                 .thenReturn(mockObject.mockActivateCardResponseFailure())
 
