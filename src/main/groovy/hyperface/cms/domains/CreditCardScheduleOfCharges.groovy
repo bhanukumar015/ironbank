@@ -64,6 +64,14 @@ class CreditCardScheduleOfCharges {
     @Column(columnDefinition="TEXT")
     FeeStrategy forexFeeStrategy
 
+    @Convert(converter = FeeStrategyJsonConverter.class)
+    @Column(columnDefinition="TEXT")
+    FeeStrategy overlimitFeeStrategy
+
+    @Convert(converter = FeeStrategyJsonConverter.class)
+    @Column(columnDefinition="TEXT")
+    FeeStrategy rewardRedemptionFeeStrategy
+
 //    List<FeeStrategy> dynamicFeeStructures
 
     @Convert(converter = SimpleJsonConverter.class)

@@ -8,8 +8,10 @@ import hyperface.cms.kong.dto.PluginObject
 import hyperface.cms.service.RestCallerService
 import io.vavr.control.Either
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpMethod
 import org.springframework.http.HttpStatus
+import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
 import org.springframework.stereotype.Service
 import org.springframework.util.LinkedMultiValueMap
@@ -29,16 +31,17 @@ class AdminAPIGateway {
                 .append(api)
     }
 
-    Either<GenericErrorResponse, Void> createConsumer(ConsumerObject consumerObject) {
-        ResponseEntity<String> response = restCallerService.call(prepareUrl(Constants.CONSUMERS_BASE_URL), HttpMethod.POST, consumerObject, null, String.class, null)
-        if ([HttpStatus.OK, HttpStatus.CREATED].contains(response.statusCode)) {
-            return Either.right()
-        } else {
-            return Either.left(new GenericErrorResponse(reason: "Error occurred while creating consumer"))
-        }
+    private Map<String, String> getHeaders() {
+        Map<String, String> headers = new HashMap<>()
+        headers.put(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON_VALUE)
+        return headers
     }
 
-    Either<GenericErrorResponse, String> addPlugin(PluginObject pluginObject, String consumer) {
+    void createConsumer(ConsumerObject consumerObject) {
+        String response = restCallerService.executeHttpPostRequestSync(prepareUrl(Constants.CONSUMERS_BASE_URL), getHeaders(), consumerObject.toString())
+    }
+
+    String addPlugin(PluginObject pluginObject, String consumer) {
         String api = new StringBuilder()
                 .append(Constants.CONSUMERS_BASE_URL)
                 .append(Constants.PATH_SEPARATOR)
@@ -46,14 +49,8 @@ class AdminAPIGateway {
                 .append(Constants.PATH_SEPARATOR)
                 .append(pluginObject.getName())
 
-        ResponseEntity<String> response = restCallerService.call(prepareUrl(api), HttpMethod.POST, new LinkedMultiValueMap<>(), null, String.class, null)
-
-        if ([HttpStatus.OK, HttpStatus.CREATED].contains(response.statusCode)) {
-            Map map = restCallerService.processStringResponseToMap(response.getBody().toString())
-            String key = map.get("key")
-            return Either.right(key)
-        } else {
-            return Either.left(new GenericErrorResponse(reason: "Error occurred while creating consumer"))
-        }
+        String response = restCallerService.executeHttpPostRequestSync(prepareUrl(api), getHeaders(), "")
+        Map map = restCallerService.processStringResponseToMap(response)
+        map.get("key")
     }
 }

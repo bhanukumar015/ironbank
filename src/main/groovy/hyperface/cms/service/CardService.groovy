@@ -47,6 +47,9 @@ class CardService {
     @Autowired
     CustomerRepository customerRepository
 
+    @Autowired
+    FeeService feeService
+
     Either<GenericErrorResponse,List<Card>> createCard(CreateCardRequest cardRequest) {
         Optional<CreditAccount> creditAccountOptional = creditAccountRepository.findById(cardRequest.creditAccountId)
         if(!creditAccountOptional.isPresent()){
@@ -72,6 +75,15 @@ class CardService {
                 return Either.left(new GenericErrorResponse(reason: "Primary card of type ${cardRequest.cardType}" +
                         "already exists with cardId ${existingCard.id}"))
             }
+        }
+        else{
+            Optional<Card> primaryCardOptional = cardRepository.findById(cardRequest.primaryCardId)
+            if(!primaryCardOptional.isPresent()){
+                return Either.left(new GenericErrorResponse(reason: "No primary card found with id ${cardRequest.primaryCardId}" +
+                        "for addOn card request"))
+            }
+            Card primaryCard = primaryCardOptional.get()
+            feeService.createAddOnCardFeeEntry(primaryCard)
         }
 
         if(cardRequest.cardType == CardType.Phygital){
@@ -132,14 +144,20 @@ class CardService {
             enableCashWithdrawal = false
             enableMagStripe = false
             dailyTransactionLimit = new TransactionLimit().tap{
-                value = cardProgram.defaultDailyTransactionLimit
+                limit = cardProgram.defaultDailyTransactionLimit
             }
             dailyCashWithdrawalLimit = new TransactionLimit().tap{
-                value = cardProgram.defaultDailyCashWithdrawalLimit
+                limit = cardProgram.defaultDailyCashWithdrawalLimit
             }
-            perTransactionLimit = new TransactionLimit()
-            monthlyTransactionLimit = new TransactionLimit()
-            lifetimeTransactionLimit = new TransactionLimit()
+            perTransactionLimit = new TransactionLimit().tap{
+                limit = cardProgram.defaultPerTransactionLimit
+            }
+            monthlyTransactionLimit = new TransactionLimit().tap{
+                limit = cardProgram.defaultMonthlyTransactionLimit
+            }
+            lifetimeTransactionLimit = new TransactionLimit().tap{
+                limit = cardProgram.defaultLifetimeTransactionLimit
+            }
         }
     }
 
@@ -224,9 +242,9 @@ class CardService {
             card.physicalCardActivated = card.physicallyIssued ? true : card.physicalCardActivated
             card.virtualCardActivated = card.virtuallyIssued ? true : card.virtualCardActivated
         }
-        if(card.cardType == CardType.Virtual && card.secondaryPhygitalCardId != null
+        if(card.cardType == CardType.Virtual && card.phygitalDuoCardId != null
                 && card.cardProgram.physicalCardActivation == CreditCardProgram.CardActivation.AUTO){
-            Card secondaryCard = cardRepository.findById(card.secondaryPhygitalCardId).get()
+            Card secondaryCard = cardRepository.findById(card.phygitalDuoCardId).get()
             secondaryCard.physicalCardActivated = true
             cardRepository.save(secondaryCard)
         }
@@ -247,27 +265,27 @@ class CardService {
         for(def limit : cardLimitsRequest.cardLimits){
             switch(limit.type){
                 case TransactionLimitType.PER_TRANSACTION_LIMIT:
-                    cardControl.perTransactionLimit.value = limit.value.toDouble()
+                    cardControl.perTransactionLimit.limit = limit.value.toDouble()
                     cardControl.perTransactionLimit.isEnabled = limit.isEnabled
                     cardControl.perTransactionLimit.additionalMarginPercentage = limit.additionalMarginPercentage
                     break
                 case TransactionLimitType.DAILY_LIMIT:
-                    cardControl.dailyTransactionLimit.value = limit.value.toDouble()
+                    cardControl.dailyTransactionLimit.limit = limit.value.toDouble()
                     cardControl.dailyTransactionLimit.isEnabled = limit.isEnabled
                     cardControl.dailyTransactionLimit.additionalMarginPercentage = limit.additionalMarginPercentage
                     break
                 case TransactionLimitType.MONTHLY_LIMIT:
-                    cardControl.monthlyTransactionLimit.value = limit.value.toDouble()
+                    cardControl.monthlyTransactionLimit.limit = limit.value.toDouble()
                     cardControl.monthlyTransactionLimit.isEnabled = limit.isEnabled
                     cardControl.monthlyTransactionLimit.additionalMarginPercentage = limit.additionalMarginPercentage
                     break
                 case TransactionLimitType.LIFETIME_LIMIT:
-                    cardControl.lifetimeTransactionLimit.value = limit.value.toDouble()
+                    cardControl.lifetimeTransactionLimit.limit = limit.value.toDouble()
                     cardControl.lifetimeTransactionLimit.isEnabled = limit.isEnabled
                     cardControl.lifetimeTransactionLimit.additionalMarginPercentage = limit.additionalMarginPercentage
                     break
                 case TransactionLimitType.DAILY_CASH_WITHDRAWAL_LIMIT:
-                    cardControl.dailyCashWithdrawalLimit.value = limit.value.toDouble()
+                    cardControl.dailyCashWithdrawalLimit.limit = limit.value.toDouble()
                     cardControl.dailyCashWithdrawalLimit.isEnabled = limit.isEnabled
                     cardControl.dailyCashWithdrawalLimit.additionalMarginPercentage = limit.additionalMarginPercentage
                     break

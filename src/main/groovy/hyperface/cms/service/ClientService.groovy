@@ -41,24 +41,13 @@ class ClientService {
         if (gatewayConfig.isServiceEnabled) {
             ConsumerObject consumer = new ConsumerObject(client.name)
 
-            Either<GenericErrorResponse, Void> createConsumerResult = adminAPIGateway.createConsumer(consumer)
-
-            if (createConsumerResult.isLeft()) {
-                String reason = createConsumerResult.left().get().getReason()
-                log.error("Failed to add consumer at kong due to ${reason}")
-                throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, reason)
-            }
+            adminAPIGateway.createConsumer(consumer)
 
             PluginObject plugin = new PluginObject(Constants.KEY_AUTH_PLUGIN)
 
-            Either<GenericErrorResponse, String> addPluginResult = adminAPIGateway.addPlugin(plugin, consumer.getUsername())
-            if (addPluginResult.isLeft()) {
-                String reason = addPluginResult.left().get().getReason()
-                log.error("Failed to add plugin ${Constants.KEY_AUTH_PLUGIN} to client: ${client.getId()} at kong due to ${reason}")
-                throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, reason)
-            }
+            String addPluginResult = adminAPIGateway.addPlugin(plugin, consumer.getUsername())
 
-            clientKey.secretKey = addPluginResult.right().get()
+            clientKey.secretKey = addPluginResult
         } else {
             clientKey.secretKey = "secret_" + Utilities.generateUniqueReference(Constants.RANDOM_KEY_GENERATOR_LENGTH)
         }

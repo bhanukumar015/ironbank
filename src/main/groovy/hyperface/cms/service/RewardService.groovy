@@ -31,6 +31,9 @@ class RewardService {
     @Autowired
     private TransactionLedgerRepository ledgerRepository
 
+    @Autowired
+    FeeService feeService
+
 
     RewardsResponse getSummary(CreditAccount creditAccount) {
         Reward reward = creditAccount.getReward()
@@ -65,6 +68,7 @@ class RewardService {
                     reward.tap {
                         rewardBalance = Math.max(0, reward.getRewardBalance() - request.getRewardPointsCount())
                     }
+                    feeService.createRewardRedemptionFeeEntry(creditAccount)
                     Reward savedReward = rewardRepository.save(reward)
                     //return success response
                     RewardsResponse rewardsResponse = new RewardsResponse()

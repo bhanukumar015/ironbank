@@ -45,6 +45,9 @@ class CreditCardProgram extends HyperfaceProgram {
     // program defaults
     Integer defaultDailyTransactionLimit
     Integer defaultDailyCashWithdrawalLimit
+    Integer defaultPerTransactionLimit
+    Integer defaultMonthlyTransactionLimit
+    Integer defaultLifetimeTransactionLimit
 
     Integer annualizedPercentageRateInBps
 
