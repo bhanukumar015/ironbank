@@ -85,7 +85,7 @@ class PaymentServiceTests {
 		CreditCardScheduleOfCharges charges = new CreditCardScheduleOfCharges()
 		CreditCardProgram creditCardProgram = new CreditCardProgram()
 		creditCardProgram.annualizedPercentageRateInBps = annualizedPercentageRateInBps
-		creditCardProgram.scheduleOfCharges = charges
+
 		charges.name = "Test charges"
 
 		// don't charge interest for fee transactions in the given cycle
@@ -106,6 +106,7 @@ class PaymentServiceTests {
 		cri1.precedence = 5000
 
 		charges.interestCriteriaList = [cri1, cri2]
+		creditCardProgram.scheduleOfCharges = charges
 		return creditCardProgram
 	}
 
