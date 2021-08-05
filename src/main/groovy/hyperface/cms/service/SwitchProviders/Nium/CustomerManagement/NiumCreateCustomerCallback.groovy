@@ -7,7 +7,6 @@ import hyperface.cms.domains.Customer
 import hyperface.cms.repository.CustomerRepository
 import hyperface.cms.service.RestCallerService
 import hyperface.cms.service.CustomerService
-import hyperface.cms.service.SwitchProviders.Nium.NiumSwitchProvider
 import hyperface.cms.service.SwitchProviders.Nium.Utility.NiumObjectsCreation
 import hyperface.cms.service.SwitchProviders.Nium.Utility.NiumRestUtils
 import kong.unirest.Callback
