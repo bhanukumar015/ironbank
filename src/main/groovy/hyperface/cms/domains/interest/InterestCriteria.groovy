@@ -1,6 +1,6 @@
 package hyperface.cms.domains.interest
 
-import hyperface.cms.domains.ledger.LedgerEntry
+import hyperface.cms.domains.ledger.TransactionLedger
 
 class InterestCriteria {
     String name
@@ -8,7 +8,7 @@ class InterestCriteria {
     Integer aprInBps
     Integer precedence = 1
 
-    public boolean checkForMatch(LedgerEntry ledgerEntry) {
+    public boolean checkForMatch(TransactionLedger ledgerEntry) {
         return conditions.find({
             return !it.checkForMatch(ledgerEntry)
         }) ? false : true
@@ -37,13 +37,13 @@ class Condition {
     MatchCriteria matchCriteria
     String value
 
-    public boolean checkForMatch(LedgerEntry ledgerEntry) {
+    public boolean checkForMatch(TransactionLedger ledgerEntry) {
         String subject = "defaultStringWontMatch"
         if(this.parameter == Parameter.TRANSACTION_TYPE) {
-            subject = ledgerEntry.txnType.name()
+            subject = ledgerEntry.transactionType.name()
         }
         else if(this.parameter == Parameter.TRANSACTION_CURRENCY) {
-            subject = ledgerEntry.customerTxn.transactionCurrency
+            subject = ledgerEntry.transaction.transactionCurrency
         }
 
         switch(matchCriteria) {

@@ -2,6 +2,7 @@ package hyperface.cms.domains
 
 
 import hyperface.cms.domains.rewards.Reward
+import hyperface.cms.model.enums.BillingStatus
 import hyperface.cms.model.enums.RepaymentIndicator
 import org.hibernate.annotations.GenericGenerator
 
@@ -37,6 +38,8 @@ class CreditAccount extends Account {
     ZonedDateTime lastStatementDueDate
     ZonedDateTime lastStatementGeneratedOn
 
+    @Enumerated(EnumType.STRING)
+    BillingStatus billingStatus
 
     @Enumerated(EnumType.STRING)
     RepaymentIndicator currentCycleRepaymentIndicator

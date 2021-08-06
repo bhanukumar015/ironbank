@@ -136,4 +136,6 @@ class Constants {
 
     /* Common Terms */
     public static final String PATH_SEPARATOR = "/"
+
+    public static final Double TAX_RATE_IN_PCT = 18
 }
